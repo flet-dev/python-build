@@ -1,14 +1,17 @@
 image: ubuntu2004
 
 environment:
-  ANDROID_SDK_ROOT: /usr/lib/android-sdk
+  ANDROID_HOME: /usr/lib/android-sdk
+  HOST: arm-linux-androideabi
 
 install:
-- ls -al $ANDROID_SDK_ROOT
+- ls -al $ANDROID_HOME
 
 build_script:
-- git clone https://github.com/beeware/cpython-android-source-deps
-- cd cpython-android-source-deps
-- ./build.sh
+- git clone https://github.com/chaquo/chaquopy
+- cd chaquopy/target
+- wget https://github.com/beeware/cpython-android-source-deps/archive/refs/heads/main.tar.gz
+- tar -xzf main.tar.gz
+- ./build-all.sh
 
 test: off
