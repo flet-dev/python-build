@@ -1,0 +1,14 @@
+image: ubuntu2004
+
+environment:
+  ANDROID_SDK_ROOT: /usr/lib/android-sdk
+
+install:
+- ls -al $ANDROID_SDK_ROOT
+
+build_script:
+- git clone https://github.com/beeware/cpython-android-source-deps
+- cd cpython-android-source-deps
+- ./build.sh
+
+test: off
