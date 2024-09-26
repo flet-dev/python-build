@@ -44,8 +44,11 @@ for:
     build_script:
       - cd windows
       - curl -OL https://www.python.org/ftp/python/%PYTHON_VERSION%/python-%PYTHON_VERSION%-amd64.exe
+      - start /wait python-%PYTHON_VERSION%-amd64.exe /uninstall /quiet
       - start /wait python-%PYTHON_VERSION%-amd64.exe /quiet
       - dir C:\python312-dist
+      - cd C:\python312-dist
+      - 7z a python-windows-for-dart-%PYTHON_VERSION%.zip *
 
     test: off
 
