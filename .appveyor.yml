@@ -57,9 +57,8 @@ for:
 
     test: off
 
-    # artifacts:
-    #   - path: client\build\windows\x64\runner\flet-windows.zip
-    #   - path: sdk\python\packages\flet-desktop\dist\*.whl
+    artifacts:
+      - path: windows\python-windows-for-dart-*.zip
 
     # deploy:
     #   provider: GitHub
