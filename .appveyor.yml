@@ -1,14 +1,61 @@
-image: ubuntu2004
+
+skip_branch_with_pr: true
 
 environment:
-  ANDROID_SDK_ROOT: /usr/lib/android-sdk
+  python_stack: python 3.12
 
-install:
-- ls -al $ANDROID_SDK_ROOT
+  matrix:
+    # - job_name: Build Python for Linux
+    #   APPVEYOR_BUILD_WORKER_IMAGE: ubuntu
 
-build_script:
-- git clone https://github.com/beeware/cpython-android-source-deps
-- cd cpython-android-source-deps
-- ./build.sh
+    - job_name: Build Python for Windows
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
 
-test: off
+matrix:
+  fast_finish: true
+
+stack: $python_stack
+
+for:
+  # ======================================
+  #      Build Python for Linux
+  # ======================================
+
+  - matrix:
+      only:
+        - job_name: Build Python for Linux
+
+    install:
+      - echo install
+
+    build_script:
+      - sh: |
+          echo build
+
+  # ======================================
+  #      Build Python for Windows
+  # ======================================
+
+  - matrix:
+      only:
+        - job_name: Build Python for Windows
+
+    install:
+      - echo install
+
+    build_script:
+      - echo build
+
+    test: off
+
+    # artifacts:
+    #   - path: client\build\windows\x64\runner\flet-windows.zip
+    #   - path: sdk\python\packages\flet-desktop\dist\*.whl
+
+    # deploy:
+    #   provider: GitHub
+    #   auth_token: $(GITHUB_TOKEN)
+    #   release: $(APPVEYOR_REPO_TAG_NAME)
+    #   artifact: flet_windows
+    #   on:
+    #     APPVEYOR_REPO_TAG: true
