@@ -46,8 +46,10 @@ for:
 
     build_script:
       - cd windows
+      - curl -OL https://www.python.org/ftp/python/3.12.5/python-3.12.5-amd64.exe
+      - start /wait python-3.12.5-amd64.exe /uninstall /quiet
+
       - curl -OL https://www.python.org/ftp/python/%PYTHON_VERSION%/python-%PYTHON_VERSION%-amd64.exe
-      - start /wait python-%PYTHON_VERSION%-amd64.exe /uninstall /quiet
       - start /wait python-%PYTHON_VERSION%-amd64.exe /quiet
       - dir C:\python312-dist
       - cd C:\python312-dist
