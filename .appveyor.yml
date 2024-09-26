@@ -3,6 +3,7 @@ skip_branch_with_pr: true
 
 environment:
   python_stack: python 3.12
+  PYTHON_VERSION: 3.12.6
 
   matrix:
     # - job_name: Build Python for Linux
@@ -40,11 +41,11 @@ for:
       only:
         - job_name: Build Python for Windows
 
-    install:
-      - echo install
-
     build_script:
-      - echo build
+      - cd windows
+      - curl -OL https://www.python.org/ftp/python/%PYTHON_VERSION%/python-%PYTHON_VERSION%-amd64.exe
+      - start /wait python-%PYTHON_VERSION%-amd64.exe /quiet
+      - dir C:\python312-dist
 
     test: off
 
