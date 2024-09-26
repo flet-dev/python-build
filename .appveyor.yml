@@ -41,6 +41,9 @@ for:
       only:
         - job_name: Build Python for Windows
 
+    install:
+      - C:\Python312\python --version
+
     build_script:
       - cd windows
       - curl -OL https://www.python.org/ftp/python/%PYTHON_VERSION%/python-%PYTHON_VERSION%-amd64.exe
