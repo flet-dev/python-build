@@ -8,9 +8,13 @@ environment:
     secure: 9SKIwc3VSfYJ5IChvNR74rlTF9BMbAfhCGu1/TmYJBMtC6lkY+UDDkZNK7rC9xnQFUxMrNgoo9kNcNAbKbU8XAcrSwkP2H4mX04FI7P+YbxfiWC8nVHhGNxR4LzO+GO0
 
   matrix:
-    - job_name: Build Python for Android
+    # - job_name: Build Python for Android
+    #   APPVEYOR_BUILD_WORKER_IMAGE: ubuntu-gce-c
+    #   NDK_VERSION: r27
+
+    - job_name: Build Python for Linux
       APPVEYOR_BUILD_WORKER_IMAGE: ubuntu-gce-c
-      NDK_VERSION: r27
+      PYTHON_DIST_RELEASE: 20240909
 
     # - job_name: Build Python for Windows
     #   APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
@@ -20,6 +24,10 @@ matrix:
 
 stack: $python_stack
 
+install:
+- read ver_maj ver_min < <(echo $PYTHON_VERSION | sed -E 's/^([0-9]+)\.([0-9]+).*/\1 \2/')
+- export PYTHON_VERSION_SHORT="$ver_maj.$ver_min"
+
 for:
   # ======================================
   #      Build Python for Android
@@ -28,10 +36,6 @@ for:
   - matrix:
       only:
         - job_name: Build Python for Android
-
-    install:
-    - read ver_maj ver_min < <(echo $PYTHON_VERSION | sed -E 's/^([0-9]+)\.([0-9]+).*/\1 \2/')
-    - export PYTHON_VERSION_SHORT="$ver_maj.$ver_min"
 
     build_script:
     - cd android
@@ -60,6 +64,30 @@ for:
       artifact: python-android
 
   # ======================================
+  #      Build Python for Linux
+  # ======================================
+
+  - matrix:
+      only:
+        - job_name: Build Python for Linux
+
+    build_script:
+    - cd linux
+    - ./package-for-linux.sh x86_64
+    - ./package-for-linux.sh aarch64
+
+    # Push all archives to artifacts
+    - find dist -maxdepth 1 -type f -iname python-linux-*.tar.gz -exec appveyor PushArtifact -DeploymentName python-linux {} \;
+
+    test: off
+
+    deploy:
+      provider: GitHub
+      auth_token: $(GITHUB_TOKEN)
+      release: v$(PYTHON_VERSION_SHORT)
+      artifact: python-linux
+
+  # ======================================
   #      Build Python for Windows
   # ======================================
 
@@ -85,11 +113,10 @@ for:
 
     artifacts:
       - path: windows\python-windows-for-dart-*.zip
+        name: python-windows
 
-    # deploy:
-    #   provider: GitHub
-    #   auth_token: $(GITHUB_TOKEN)
-    #   release: $(APPVEYOR_REPO_TAG_NAME)
-    #   artifact: flet_windows
-    #   on:
-    #     APPVEYOR_REPO_TAG: true
+    deploy:
+      provider: GitHub
+      auth_token: $(GITHUB_TOKEN)
+      release: v$(PYTHON_VERSION_SHORT)
+      artifact: python-windows
