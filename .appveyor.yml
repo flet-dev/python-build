@@ -73,7 +73,7 @@ for:
 
     build_script:
     - cd linux
-    - ./package-for-linux.sh x86_64 "_v4"
+    - ./package-for-linux.sh x86_64 "_v3"
     - ./package-for-linux.sh aarch64 ""
 
     # Push all archives to artifacts
