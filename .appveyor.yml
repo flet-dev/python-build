@@ -4,6 +4,7 @@ skip_branch_with_pr: true
 environment:
   python_stack: python 3.12
   PYTHON_VERSION: 3.12.6
+  PYTHON_VERSION_SHORT: 3.12
   GITHUB_TOKEN:
     secure: 9SKIwc3VSfYJ5IChvNR74rlTF9BMbAfhCGu1/TmYJBMtC6lkY+UDDkZNK7rC9xnQFUxMrNgoo9kNcNAbKbU8XAcrSwkP2H4mX04FI7P+YbxfiWC8nVHhGNxR4LzO+GO0
 
@@ -28,8 +29,6 @@ matrix:
 stack: $python_stack
 
 install:
-- read ver_maj ver_min < <(echo $PYTHON_VERSION | sed -E 's/^([0-9]+)\.([0-9]+).*/\1 \2/')
-- export PYTHON_VERSION_SHORT="$ver_maj.$ver_min"
 - python --version
 
 for:
