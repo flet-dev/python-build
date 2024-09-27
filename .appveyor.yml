@@ -9,8 +9,8 @@ environment:
     secure: 9SKIwc3VSfYJ5IChvNR74rlTF9BMbAfhCGu1/TmYJBMtC6lkY+UDDkZNK7rC9xnQFUxMrNgoo9kNcNAbKbU8XAcrSwkP2H4mX04FI7P+YbxfiWC8nVHhGNxR4LzO+GO0
 
   matrix:
-    # - job_name: Build Python for iOS and macOS
-    #   APPVEYOR_BUILD_WORKER_IMAGE: macos-sonoma
+    - job_name: Build Python for iOS and macOS
+      APPVEYOR_BUILD_WORKER_IMAGE: macos-sonoma
 
     # - job_name: Build Python for Android
     #   APPVEYOR_BUILD_WORKER_IMAGE: ubuntu-gce-c
@@ -20,8 +20,8 @@ environment:
     #   APPVEYOR_BUILD_WORKER_IMAGE: ubuntu-gce-c
     #   PYTHON_DIST_RELEASE: 20240909
 
-    - job_name: Build Python for Windows
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
+    # - job_name: Build Python for Windows
+    #   APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
 
 matrix:
   fast_finish: true
@@ -65,7 +65,7 @@ for:
     deploy:
       provider: GitHub
       auth_token: $(GITHUB_TOKEN)
-      release: v$(PYTHON_VERSION)
+      release: v$(PYTHON_VERSION_SHORT)
       artifact: python-darwin
 
   # ======================================
