@@ -1,0 +1,15 @@
+lib-dynload/_test*.so
+lib-dynload/_ctypes_test*.so
+lib-dynload/xxlimited*.so
+lib-dynload/_xxtestfuzz*.so
+config-*
+curses
+ensurepip
+idlelib
+pydoc_data
+site-packages
+test
+tkinter
+turtle*
+wsgiref
+*/__pycache__

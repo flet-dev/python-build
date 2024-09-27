@@ -8,6 +8,9 @@ environment:
     secure: 9SKIwc3VSfYJ5IChvNR74rlTF9BMbAfhCGu1/TmYJBMtC6lkY+UDDkZNK7rC9xnQFUxMrNgoo9kNcNAbKbU8XAcrSwkP2H4mX04FI7P+YbxfiWC8nVHhGNxR4LzO+GO0
 
   matrix:
+    # - job_name: Build Python for iOS and macOS
+    # APPVEYOR_BUILD_WORKER_IMAGE: macos-sonoma
+
     # - job_name: Build Python for Android
     #   APPVEYOR_BUILD_WORKER_IMAGE: ubuntu-gce-c
     #   NDK_VERSION: r27
@@ -27,8 +30,45 @@ stack: $python_stack
 install:
 - read ver_maj ver_min < <(echo $PYTHON_VERSION | sed -E 's/^([0-9]+)\.([0-9]+).*/\1 \2/')
 - export PYTHON_VERSION_SHORT="$ver_maj.$ver_min"
+- python --version
 
 for:
+  # ======================================
+  #      Build Python for iOS and macOS
+  # ======================================
+
+  - matrix:
+      only:
+        - job_name: Build Python for iOS and macOS
+
+    build_script:
+    - cd darwin
+
+    # Build Python for iOS and macOS
+    - git clone --branch=$PYTHON_VERSION_SHORT https://github.com/beeware/Python-Apple-support.git
+    - mkdir -p dist
+    - sh: |
+        pushd Python-Apple-support
+        make iOS || exit 1
+        tar -czf ../dist/python-ios-mobile-forge-$PYTHON_VERSION_SHORT.tar.gz install support -C .
+        make macOS || exit 1
+        popd
+
+    # Package for Dart
+    - ./package-ios-for-dart.sh Python-Apple-support $PYTHON_VERSION_SHORT
+    - ./package-macos-for-dart.sh Python-Apple-support $PYTHON_VERSION_SHORT
+
+    # Push all archives to artifacts
+    - find dist -maxdepth 1 -type f -iname python-*.tar.gz -exec appveyor PushArtifact -DeploymentName python-darwin {} \;
+
+    test: off
+
+    deploy:
+      provider: GitHub
+      auth_token: $(GITHUB_TOKEN)
+      release: v$(PYTHON_VERSION)
+      artifact: python-darwin
+
   # ======================================
   #      Build Python for Android
   # ======================================
