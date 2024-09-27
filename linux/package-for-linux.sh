@@ -1,6 +1,7 @@
 PYTHON_ARCH=${1:?}
+PYTHON_ARCH_VER=${2:?}
 
-DIST_FILE=cpython-${PYTHON_VERSION}+${PYTHON_DIST_RELEASE}-${PYTHON_ARCH}-unknown-linux-gnu-install_only_stripped.tar.gz
+DIST_FILE=cpython-${PYTHON_VERSION}+${PYTHON_DIST_RELEASE}-${PYTHON_ARCH}${PYTHON_ARCH_VER}-unknown-linux-gnu-install_only_stripped.tar.gz
 curl -OL https://github.com/indygreg/python-build-standalone/releases/download/${PYTHON_DIST_RELEASE}/${DIST_FILE}
 mkdir -p $PYTHON_ARCH/build
 tar zxvf $DIST_FILE -C $PYTHON_ARCH/build
