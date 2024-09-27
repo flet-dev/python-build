@@ -1,5 +1,6 @@
 # Files to exclude for Linux distro
 #
+*.py
 lib/python*/lib-dynload/_test*.so
 lib/python*/lib-dynload/_ctypes_test*.so
 lib/python*/lib-dynload/xxlimited*.so

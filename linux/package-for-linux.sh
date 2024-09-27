@@ -6,12 +6,12 @@ curl -OL https://github.com/indygreg/python-build-standalone/releases/download/$
 mkdir -p $PYTHON_ARCH/build
 tar zxvf $DIST_FILE -C $PYTHON_ARCH/build
 
+# compile lib
+python -m compileall -b $PYTHON_ARCH/build/python/lib/python3.12
+
 # copy build to dist
 mkdir -p $PYTHON_ARCH/dist
 rsync -av --exclude-from=python-linux-dart.exclude $PYTHON_ARCH/build/python/* $PYTHON_ARCH/dist
-
-# compile lib
-python -m compileall -b $PYTHON_ARCH/dist/lib/python3.12
 
 # archive
 tar -czf python-linux-dart-$PYTHON_VERSION_SHORT-$PYTHON_ARCH.tar.gz -C $PYTHON_ARCH/dist .
