@@ -147,7 +147,7 @@ for:
       - start /wait python-%PYTHON_VERSION%-amd64.exe /quiet
       - dir C:\python312-dist
       - C:\python312-dist\python -m compileall -b C:\python312-dist\Lib
-      - 7z a -xr@exclude.txt python-windows-for-dart-%PYTHON_VERSION%.zip C:\python312-dist\*
+      - 7z a -xr@exclude.txt python-windows-for-dart-%PYTHON_VERSION_SHORT%.zip C:\python312-dist\*
 
     test: off
 
