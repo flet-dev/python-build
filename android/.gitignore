@@ -1,0 +1,13 @@
+.envrc
+.vscode/
+build
+dist
+downloads
+install
+local
+support
+*.dist-info
+__pycache__
+*.log
+*.gz
+*.DS_Store

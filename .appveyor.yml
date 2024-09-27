@@ -4,13 +4,16 @@ skip_branch_with_pr: true
 environment:
   python_stack: python 3.12
   PYTHON_VERSION: 3.12.6
+  GITHUB_TOKEN:
+    secure: 9SKIwc3VSfYJ5IChvNR74rlTF9BMbAfhCGu1/TmYJBMtC6lkY+UDDkZNK7rC9xnQFUxMrNgoo9kNcNAbKbU8XAcrSwkP2H4mX04FI7P+YbxfiWC8nVHhGNxR4LzO+GO0
 
   matrix:
-    # - job_name: Build Python for Linux
-    #   APPVEYOR_BUILD_WORKER_IMAGE: ubuntu
+    - job_name: Build Python for Android
+      APPVEYOR_BUILD_WORKER_IMAGE: ubuntu-gce-c
+      NDK_VERSION: r27
 
-    - job_name: Build Python for Windows
-      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
+    # - job_name: Build Python for Windows
+    #   APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
 
 matrix:
   fast_finish: true
@@ -19,19 +22,42 @@ stack: $python_stack
 
 for:
   # ======================================
-  #      Build Python for Linux
+  #      Build Python for Android
   # ======================================
 
   - matrix:
       only:
-        - job_name: Build Python for Linux
+        - job_name: Build Python for Android
 
     install:
-      - echo install
+    - read ver_maj ver_min < <(echo $PYTHON_VERSION | sed -E 's/^([0-9]+)\.([0-9]+).*/\1 \2/')
+    - export PYTHON_VERSION_SHORT="$ver_maj.$ver_min"
 
     build_script:
-      - sh: |
-          echo build
+    - cd android
+
+    # Build all Python ABIs
+    - ./build-all.sh $PYTHON_VERSION
+
+    # Package support package for use with mobile-forge
+    - mkdir -p dist
+    - tar -czf dist/python-android-mobile-forge-$PYTHON_VERSION_SHORT.tar.gz install support
+
+    # Package individual ABIs for use with serious_python Flutter package
+    - ./package-for-dart.sh install $PYTHON_VERSION arm64-v8a
+    - ./package-for-dart.sh install $PYTHON_VERSION armeabi-v7a
+    - ./package-for-dart.sh install $PYTHON_VERSION x86_64
+
+    # Push all archives to artifacts
+    - find dist -maxdepth 1 -type f -iname python-android-*.tar.gz -exec appveyor PushArtifact -DeploymentName python-android {} \;
+
+    test: off
+
+    deploy:
+      provider: GitHub
+      auth_token: $(GITHUB_TOKEN)
+      release: v$(PYTHON_VERSION_SHORT)
+      artifact: python-android
 
   # ======================================
   #      Build Python for Windows
