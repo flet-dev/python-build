@@ -12,16 +12,16 @@ environment:
     - job_name: Build Python for iOS and macOS
       APPVEYOR_BUILD_WORKER_IMAGE: macos-sonoma
 
-    # - job_name: Build Python for Android
-    #   APPVEYOR_BUILD_WORKER_IMAGE: ubuntu-gce-c
-    #   NDK_VERSION: r27
+    - job_name: Build Python for Android
+      APPVEYOR_BUILD_WORKER_IMAGE: ubuntu-gce-c
+      NDK_VERSION: r27
 
-    # - job_name: Build Python for Linux
-    #   APPVEYOR_BUILD_WORKER_IMAGE: ubuntu-gce-c
-    #   PYTHON_DIST_RELEASE: 20240909
+    - job_name: Build Python for Linux
+      APPVEYOR_BUILD_WORKER_IMAGE: ubuntu-gce-c
+      PYTHON_DIST_RELEASE: 20240909
 
-    # - job_name: Build Python for Windows
-    #   APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
+    - job_name: Build Python for Windows
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
 
 matrix:
   fast_finish: true
