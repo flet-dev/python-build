@@ -1,0 +1,26 @@
+# Files to exclude for Linux distro
+#
+*.py
+lib/python*/lib-dynload/_test*.so
+lib/python*/lib-dynload/_ctypes_test*.so
+lib/python*/lib-dynload/xxlimited*.so
+lib/python*/lib-dynload/_xxtestfuzz*.so
+lib/python*/curses
+lib/python*/ensurepip
+lib/python*/idlelib
+lib/python*/pydoc_data
+lib/python*/test
+lib/python*/tkinter
+lib/python*/turtle*
+lib/python*/wsgiref
+lib/itcl*
+lib/tcl*
+lib/thread*
+lib/Tix*
+lib/tk*
+share
+*/__pycache__
+lib/python*/config-*
+lib/pkgconfig
+lib/python*/site-packages
+bin

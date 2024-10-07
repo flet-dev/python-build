@@ -1,14 +1,162 @@
-image: ubuntu2004
+
+skip_branch_with_pr: true
 
 environment:
-  ANDROID_SDK_ROOT: /usr/lib/android-sdk
+  python_stack: python 3.12
+  PYTHON_VERSION: 3.12.6
+  PYTHON_VERSION_SHORT: 3.12
+  GITHUB_TOKEN:
+    secure: 9SKIwc3VSfYJ5IChvNR74rlTF9BMbAfhCGu1/TmYJBMtC6lkY+UDDkZNK7rC9xnQFUxMrNgoo9kNcNAbKbU8XAcrSwkP2H4mX04FI7P+YbxfiWC8nVHhGNxR4LzO+GO0
+
+  matrix:
+    - job_name: Build Python for iOS and macOS
+      APPVEYOR_BUILD_WORKER_IMAGE: macos-sonoma
+
+    - job_name: Build Python for Android
+      APPVEYOR_BUILD_WORKER_IMAGE: ubuntu-gce-c
+      NDK_VERSION: r27
+
+    - job_name: Build Python for Linux
+      APPVEYOR_BUILD_WORKER_IMAGE: ubuntu-gce-c
+      PYTHON_DIST_RELEASE: 20240909
+
+    - job_name: Build Python for Windows
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
+
+matrix:
+  fast_finish: true
+
+stack: $python_stack
 
 install:
-- ls -al $ANDROID_SDK_ROOT
+- python --version
 
-build_script:
-- git clone https://github.com/beeware/cpython-android-source-deps
-- cd cpython-android-source-deps
-- ./build.sh
+for:
+  # ======================================
+  #      Build Python for iOS and macOS
+  # ======================================
 
-test: off
+  - matrix:
+      only:
+        - job_name: Build Python for iOS and macOS
+
+    build_script:
+    - cd darwin
+
+    # Build Python for iOS and macOS
+    - git clone --branch=$PYTHON_VERSION_SHORT https://github.com/beeware/Python-Apple-support.git
+    - mkdir -p dist
+    - sh: |
+        pushd Python-Apple-support
+        make iOS || exit 1
+        tar -czf ../dist/python-ios-mobile-forge-$PYTHON_VERSION_SHORT.tar.gz install support -C .
+        make macOS || exit 1
+        popd
+
+    # Package for Dart
+    - ./package-ios-for-dart.sh Python-Apple-support $PYTHON_VERSION_SHORT
+    - ./package-macos-for-dart.sh Python-Apple-support $PYTHON_VERSION_SHORT
+
+    # Push all archives to artifacts
+    - find dist -maxdepth 1 -type f -iname python-*.tar.gz -exec appveyor PushArtifact -DeploymentName python-darwin {} \;
+
+    test: off
+
+    deploy:
+      provider: GitHub
+      auth_token: $(GITHUB_TOKEN)
+      release: v$(PYTHON_VERSION_SHORT)
+      artifact: python-darwin
+
+  # ======================================
+  #      Build Python for Android
+  # ======================================
+
+  - matrix:
+      only:
+        - job_name: Build Python for Android
+
+    build_script:
+    - cd android
+
+    # Build all Python ABIs
+    - ./build-all.sh $PYTHON_VERSION
+
+    # Package support package for use with mobile-forge
+    - mkdir -p dist
+    - tar -czf dist/python-android-mobile-forge-$PYTHON_VERSION_SHORT.tar.gz install support
+
+    # Package individual ABIs for use with serious_python Flutter package
+    - ./package-for-dart.sh install $PYTHON_VERSION arm64-v8a
+    - ./package-for-dart.sh install $PYTHON_VERSION armeabi-v7a
+    - ./package-for-dart.sh install $PYTHON_VERSION x86_64
+
+    # Push all archives to artifacts
+    - find dist -maxdepth 1 -type f -iname python-android-*.tar.gz -exec appveyor PushArtifact -DeploymentName python-android {} \;
+
+    test: off
+
+    deploy:
+      provider: GitHub
+      auth_token: $(GITHUB_TOKEN)
+      release: v$(PYTHON_VERSION_SHORT)
+      artifact: python-android
+
+  # ======================================
+  #      Build Python for Linux
+  # ======================================
+
+  - matrix:
+      only:
+        - job_name: Build Python for Linux
+
+    build_script:
+    - cd linux
+    - ./package-for-linux.sh x86_64 "_v3"
+    - ./package-for-linux.sh aarch64 ""
+
+    # Push all archives to artifacts
+    - ls
+    - find . -maxdepth 1 -type f -iname "python-linux-dart-*.tar.gz" -exec appveyor PushArtifact -DeploymentName python-linux {} \;
+
+    test: off
+
+    deploy:
+      provider: GitHub
+      auth_token: $(GITHUB_TOKEN)
+      release: v$(PYTHON_VERSION_SHORT)
+      artifact: python-linux
+
+  # ======================================
+  #      Build Python for Windows
+  # ======================================
+
+  - matrix:
+      only:
+        - job_name: Build Python for Windows
+
+    install:
+      - C:\Python312\python --version
+
+    build_script:
+      - cd windows
+      - curl -OL https://www.python.org/ftp/python/3.12.5/python-3.12.5-amd64.exe
+      - start /wait python-3.12.5-amd64.exe /uninstall /quiet
+
+      - curl -OL https://www.python.org/ftp/python/%PYTHON_VERSION%/python-%PYTHON_VERSION%-amd64.exe
+      - start /wait python-%PYTHON_VERSION%-amd64.exe /quiet
+      - dir C:\python312-dist
+      - C:\python312-dist\python -m compileall -b C:\python312-dist\Lib
+      - 7z a -xr@exclude.txt python-windows-for-dart-%PYTHON_VERSION_SHORT%.zip C:\python312-dist\*
+
+    test: off
+
+    artifacts:
+      - path: windows\python-windows-for-dart-*.zip
+        name: python-windows
+
+    deploy:
+      provider: GitHub
+      auth_token: $(GITHUB_TOKEN)
+      release: v$(PYTHON_VERSION_SHORT)
+      artifact: python-windows

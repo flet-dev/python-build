@@ -1,0 +1,13 @@
+ios-arm64/bin
+ios-arm64/include
+ios-arm64/lib
+ios-arm64_x86_64-simulator/bin
+ios-arm64_x86_64-simulator/include
+ios-arm64_x86_64-simulator/lib
+macos-arm64_x86_64/Python.framework/Headers
+macos-arm64_x86_64/Python.framework/Versions/*/_CodeSignature
+macos-arm64_x86_64/Python.framework/Versions/*/Headers
+macos-arm64_x86_64/Python.framework/Versions/*/include
+macos-arm64_x86_64/Python.framework/Versions/*/lib
+iphoneos
+iphonesimulator

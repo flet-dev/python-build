@@ -1,0 +1,23 @@
+<Options>
+    <Option Name="InstallAllUsers" Value="0" />
+    <Option Name="TargetDir" Value="C:\python312-dist" />
+    <Option Name="AssociateFiles" Value="0" />
+    <Option Name="CompileAll" Value="0" />
+    <Option Name="PrependPath" Value="0" />
+    <Option Name="Shortcuts" Value="0" />
+    <Option Name="Include_doc" Value="0" />
+    <Option Name="Include_debug" Value="1" />
+    <Option Name="Include_dev" Value="1" />
+    <Option Name="Include_exe" Value="0" />
+    <Option Name="Include_launcher" Value="0" />
+    <Option Name="InstallLauncherAllUsers" Value="0" />
+    <Option Name="Include_lib" Value="1" />
+    <Option Name="Include_pip" Value="1" />
+    <Option Name="Include_symbols" Value="0" />
+    <Option Name="Include_tcltk" Value="0" />
+    <Option Name="Include_test" Value="0" />
+    <Option Name="Include_tools" Value="0" />
+    <Option Name="LauncherOnly" Value="0" />
+    <Option Name="SimpleInstall" Value="0" />
+    <Option Name="SimpleInstallDescription"></Option>
+</Options>
