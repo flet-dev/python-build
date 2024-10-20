@@ -207,6 +207,8 @@ echo ">>> Configuring Python for $abi"
     BZIP2_LIBS="-L$bzip2_install/lib -lbz2" \
     LIBFFI_CFLAGS="-I$libffi_install/include" \
     LIBFFI_LIBS="-L$libffi_install/lib -lffi" \
+    LIBSQLITE3_CFLAGS="-I$sqlite_install/include" \
+    LIBSQLITE3_LIBS="-L$sqlite_install/lib" \
     --host=$host_triplet \
     --build=$(./config.guess) \
     --with-build-python=yes \
