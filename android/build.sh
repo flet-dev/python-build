@@ -230,6 +230,9 @@ make install \
 echo ">>> Copying Python dependencies $abi"
 cp {$openssl_install,$sqlite_install}/lib/*_python.so $python_install/lib
 
+echo ">>> Copying libc++_shared.so"
+cp $LIBC_SHARED_SO $python_install/lib
+
 echo ">>> Stripping dynamic libraries for $abi"
 find $python_install -type f -iname "*.so" -exec $STRIP --strip-unneeded {} \;
 

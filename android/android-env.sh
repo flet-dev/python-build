@@ -70,6 +70,7 @@ export NM="$toolchain/bin/llvm-nm"
 export RANLIB="$toolchain/bin/llvm-ranlib"
 export READELF="$toolchain/bin/llvm-readelf"
 export STRIP="$toolchain/bin/llvm-strip"
+export LIBC_SHARED_SO="$toolchain/sysroot/usr/lib/${clang_triplet}/libc++_shared.so"
 
 # The quotes make sure the wildcard in the `toolchain` assignment has been expanded.
 for path in "$AR" "$AS" "$CC" "$CXX" "$LD" "$NM" "$RANLIB" "$READELF" "$STRIP"; do
