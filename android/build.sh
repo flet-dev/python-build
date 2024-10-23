@@ -15,6 +15,9 @@ PREFIX="$script_dir/install/android/$abi/python-${version}"
 mkdir -p "$PREFIX"
 PREFIX=$(realpath "$PREFIX")
 
+downloads=$script_dir/downloads
+mkdir -p $downloads
+
 cd $script_dir
 . abi-to-host.sh
 . android-env.sh
