@@ -7,6 +7,9 @@ abi=${3:?}
 
 script_dir=$(dirname $(realpath $0))
 
+. abi-to-host.sh
+. android-env.sh
+
 # build short Python version
 read python_version_major python_version_minor < <(echo $python_version | sed -E 's/^([0-9]+)\.([0-9]+).*/\1 \2/')
 python_version_short=$python_version_major.$python_version_minor
@@ -22,6 +25,10 @@ mkdir -p dist
 
 # copy files to build
 rsync -av --exclude-from=$script_dir/python-android-dart.exclude $install_root/android/$abi/python-$python_version/* $build_dir
+
+# strip binaries
+chmod u+w $(find $build_dir -name *.so)
+$STRIP $(find $build_dir -name *.so)
 
 # create libpythonbundle.so
 bundle_dir=$build_dir/libpythonbundle
@@ -47,8 +54,14 @@ zip -r ../libpythonbundle.so .
 cd -
 rm -rf $bundle_dir
 
-# copy *.so from lib
-cp $build_dir/lib/*.so $build_dir
+# copy python*.so from lib
+cp $build_dir/lib/libpython$python_version_short.so $build_dir
+
+# copy deps
+for name in crypto ssl sqlite3; do
+    cp "$build_dir/lib/lib${name}_"python.so "$build_dir"
+done
+
 rm -rf $build_dir/lib
 
 # final archive
