@@ -2,8 +2,8 @@
 set -eu -o pipefail
 
 script_dir=$(dirname $(realpath $0))
-abi=${1:?}
-version=${2:?}
+version=${1:?}
+abi=${2:?}
 read version_major version_minor version_micro < <(
     echo $version | sed -E 's/^([0-9]+)\.([0-9]+)\.([0-9]+).*/\1 \2 \3/'
 )
@@ -134,6 +134,9 @@ if [ $version_int -le 312 ]; then
 
     make -j $CPU_COUNT
     make install prefix=$PREFIX
+
+    echo ">>> Replacing host platform"
+    sed -i -e "s/_PYTHON_HOST_PLATFORM=.*/_PYTHON_HOST_PLATFORM=android-$api_level-$abi/" $PREFIX/lib/python$version_short/config-$version_short/Makefile
 
 # Python 3.13 and later comes with an official Android build script.
 else

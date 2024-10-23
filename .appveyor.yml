@@ -3,7 +3,7 @@ skip_branch_with_pr: true
 
 environment:
   python_stack: python 3.12
-  PYTHON_VERSION: 3.12.6
+  PYTHON_VERSION: 3.12.7
   PYTHON_VERSION_SHORT: 3.12
   GITHUB_TOKEN:
     secure: 9SKIwc3VSfYJ5IChvNR74rlTF9BMbAfhCGu1/TmYJBMtC6lkY+UDDkZNK7rC9xnQFUxMrNgoo9kNcNAbKbU8XAcrSwkP2H4mX04FI7P+YbxfiWC8nVHhGNxR4LzO+GO0
@@ -18,7 +18,7 @@ environment:
 
     - job_name: Build Python for Linux
       APPVEYOR_BUILD_WORKER_IMAGE: ubuntu-gce-c
-      PYTHON_DIST_RELEASE: 20240909
+      PYTHON_DIST_RELEASE: 20241016
 
     - job_name: Build Python for Windows
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2022
