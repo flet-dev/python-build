@@ -90,7 +90,9 @@ if [ $version_int -le 312 ]; then
 
         lib_dir="$script_dir/install/android/$abi/${lib_name}-${lib_ver}"
         mkdir -p $lib_dir
-        curl -Lf "$url" | tar -x -C $lib_dir
+        lib_file=$downloads/${lib_name}-${lib_ver}-${abi}.tar.gz
+        curl -Lf "$url" -o $lib_file
+        tar -xf $lib_file -C $lib_dir
         cp -R $lib_dir/* $PREFIX
         echo "${lib_name}: $lib_ver" >> $support_versions
     done
