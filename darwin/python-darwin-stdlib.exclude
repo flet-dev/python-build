@@ -3,6 +3,7 @@ lib-dynload/_ctypes_test*.so
 lib-dynload/xxlimited*.so
 lib-dynload/_xxtestfuzz*.so
 config-*
+ctypes/macholib/fetch_macholib*
 curses
 ensurepip
 idlelib
