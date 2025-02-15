@@ -46,7 +46,7 @@ find "$stdlib_dir/${archs[0]}/lib-dynload" -name "*.$dylib_ext" | while read ful
         "$stdlib_dir/${archs[1]}/lib-dynload" \
         "$stdlib_dir/${archs[2]}/lib-dynload" \
         $dylib_relative_path \
-        "Frameworks/serious_python_darwin.framework/python-stdlib/lib-dynload" \
+        "Frameworks/serious_python_darwin.framework/python.bundle/stdlib/lib-dynload" \
         $python_frameworks_dir
     #break # run for one lib only - for tests
 done
