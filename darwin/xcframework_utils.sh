@@ -65,6 +65,11 @@ create_xcframework_from_dylibs() {
     create_plist $framework "org.python.$framework_identifier" $fd/Info.plist
     echo "$origin_prefix/$dylib_without_ext.fwork" > $fd/$framework.origin
 
+    # copy privacy manifest if any
+    if [ -f "$iphone_dir/$dylib_without_ext.xcprivacy" ]; then
+        cp "$iphone_dir/$dylib_without_ext.xcprivacy" "$fd/PrivacyInfo.xcprivacy"
+    fi
+
     # creating "iphonesimulator" framework
     fd=iphonesimulator/$framework.framework
     mkdir -p $fd
@@ -77,6 +82,11 @@ create_xcframework_from_dylibs() {
     install_name_tool -id @rpath/$framework.framework/$framework $fd/$framework
     create_plist $framework "org.python.$framework_identifier" $fd/Info.plist
     echo "$origin_prefix/$dylib_without_ext.fwork" > $fd/$framework.origin
+
+    # copy privacy manifest if any
+    if [ -f "$iphone_dir/$dylib_without_ext.xcprivacy" ]; then
+        mv "$iphone_dir/$dylib_without_ext.xcprivacy" "$fd/PrivacyInfo.xcprivacy"
+    fi
 
     # merge frameworks info xcframework
     xcodebuild -create-xcframework \

@@ -38,6 +38,10 @@ for arch in "${archs[@]}"; do
     rsync -av --exclude-from=$script_dir/python-darwin-stdlib.exclude $python_apple_support_root/install/iOS/$arch/python-*/lib/python$python_version_short/* $stdlib_dir/$arch
 done
 
+echo "Copying privacy manifests..."
+cp "$script_dir/PrivacyInfo.xcprivacy" "$stdlib_dir/${archs[0]}/lib-dynload/_hashlib.xcprivacy"
+cp "$script_dir/PrivacyInfo.xcprivacy" "$stdlib_dir/${archs[0]}/lib-dynload/_ssl.xcprivacy"
+
 echo "Converting lib-dynload to xcframeworks..."
 find "$stdlib_dir/${archs[0]}/lib-dynload" -name "*.$dylib_ext" | while read full_dylib; do
     dylib_relative_path=${full_dylib#$stdlib_dir/${archs[0]}/lib-dynload/}
