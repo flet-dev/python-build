@@ -6,7 +6,7 @@ environment:
   PYTHON_VERSION: 3.12.9
   PYTHON_VERSION_SHORT: 3.12
   GITHUB_TOKEN:
-    secure: 9SKIwc3VSfYJ5IChvNR74rlTF9BMbAfhCGu1/TmYJBMtC6lkY+UDDkZNK7rC9xnQFUxMrNgoo9kNcNAbKbU8XAcrSwkP2H4mX04FI7P+YbxfiWC8nVHhGNxR4LzO+GO0
+    secure: 9SKIwc3VSfYJ5IChvNR74gtHacdLajprqIHsTkW2XMxUeJmqkxkATIyHlfClLEwNSHys4zS9OqmbaooO5YvuDzHsZKIIHXUuTJst06jylGkUWhFC3hozkRUoet9ZaTZZ
 
   matrix:
     # - job_name: Build Python for iOS and macOS
