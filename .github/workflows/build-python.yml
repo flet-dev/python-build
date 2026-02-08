@@ -8,6 +8,7 @@ on:
 
 env:
   PYTHON_VERSION: 3.12.12
+  PYTHON_WINDOWS_VERSION: 3.12.10
   PYTHON_VERSION_SHORT: '3.12'
 
 jobs:
@@ -22,7 +23,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
@@ -104,8 +105,8 @@ jobs:
         working-directory: windows
         shell: cmd
         run: |
-          curl -OL https://www.python.org/ftp/python/3.12.10/python-3.12.10-amd64.exe
-          start /wait python-3.12.10-amd64.exe /quiet
+          curl -OL https://www.python.org/ftp/python/${{ env.PYTHON_WINDOWS_VERSION }}/python-${{ env.PYTHON_WINDOWS_VERSION }}-amd64.exe
+          start /wait python-${{ env.PYTHON_WINDOWS_VERSION }}-amd64.exe /quiet
           C:\python312-dist\python -m compileall -b C:\python312-dist\Lib
           7z a -xr@exclude.txt python-windows-for-dart-%PYTHON_VERSION_SHORT%.zip C:\python312-dist\*
       - uses: actions/upload-artifact@v4
