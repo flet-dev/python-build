@@ -100,16 +100,12 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - name: Show bundled Python
-        run: C:\Python312\python --version
-      - name: Reinstall requested Python version
+      - name: Install requested Python version
         working-directory: windows
         shell: cmd
         run: |
-          curl -OL https://www.python.org/ftp/python/3.12.8/python-3.12.8-amd64.exe
-          start /wait python-3.12.8-amd64.exe /uninstall /quiet
-          curl -OL https://www.python.org/ftp/python/%PYTHON_VERSION%/python-%PYTHON_VERSION%-amd64.exe
-          start /wait python-%PYTHON_VERSION%-amd64.exe /quiet
+          curl -OL https://www.python.org/ftp/python/3.12.10/python-3.12.10-amd64.exe
+          start /wait python-3.12.10-amd64.exe /quiet
           C:\python312-dist\python -m compileall -b C:\python312-dist\Lib
           7z a -xr@exclude.txt python-windows-for-dart-%PYTHON_VERSION_SHORT%.zip C:\python312-dist\*
       - uses: actions/upload-artifact@v4
