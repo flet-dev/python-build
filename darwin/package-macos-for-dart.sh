@@ -1,5 +1,5 @@
-#!/bin/bash
-set -eu
+#!/usr/bin/env bash
+set -euo pipefail
 
 python_apple_support_root=${1:?}
 python_version=${2:?}

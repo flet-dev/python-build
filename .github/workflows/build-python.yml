@@ -32,6 +32,7 @@ jobs:
 
       - name: Build Python for iOS and macOS
         working-directory: darwin
+        shell: bash
         run: |
           git clone --branch="$PYTHON_VERSION_SHORT" https://github.com/beeware/Python-Apple-support.git
           mkdir -p dist
@@ -42,8 +43,8 @@ jobs:
           make macOS
           popd
 
-          ./package-ios-for-dart.sh Python-Apple-support "$PYTHON_VERSION_SHORT"
-          ./package-macos-for-dart.sh Python-Apple-support "$PYTHON_VERSION_SHORT"
+          bash ./package-ios-for-dart.sh Python-Apple-support "$PYTHON_VERSION_SHORT"
+          bash ./package-macos-for-dart.sh Python-Apple-support "$PYTHON_VERSION_SHORT"
 
       - name: Upload Darwin build artifacts
         uses: actions/upload-artifact@v4
@@ -64,13 +65,14 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: python --version
       - working-directory: android
+        shell: bash
         run: |
-          ./build-all.sh "$PYTHON_VERSION"
+          bash ./build-all.sh "$PYTHON_VERSION"
           mkdir -p dist
           tar -czf dist/python-android-mobile-forge-$PYTHON_VERSION_SHORT.tar.gz install support
-          ./package-for-dart.sh install "$PYTHON_VERSION" arm64-v8a
-          ./package-for-dart.sh install "$PYTHON_VERSION" armeabi-v7a
-          ./package-for-dart.sh install "$PYTHON_VERSION" x86_64
+          bash ./package-for-dart.sh install "$PYTHON_VERSION" arm64-v8a
+          bash ./package-for-dart.sh install "$PYTHON_VERSION" armeabi-v7a
+          bash ./package-for-dart.sh install "$PYTHON_VERSION" x86_64
       - uses: actions/upload-artifact@v4
         with:
           name: python-android
@@ -85,9 +87,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - working-directory: linux
+        shell: bash
         run: |
-          ./package-for-linux.sh x86_64 "_v2"
-          ./package-for-linux.sh aarch64 ""
+          bash ./package-for-linux.sh x86_64 "_v2"
+          bash ./package-for-linux.sh aarch64 ""
       - uses: actions/upload-artifact@v4
         with:
           name: python-linux

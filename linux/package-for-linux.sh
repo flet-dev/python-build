@@ -1,3 +1,6 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
 PYTHON_ARCH=${1:?}
 PYTHON_ARCH_VER=${2:-""}
 
