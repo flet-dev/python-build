@@ -1,0 +1,148 @@
+name: Build Python Packages
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+env:
+  PYTHON_VERSION: 3.12.12
+  PYTHON_VERSION_SHORT: '3.12'
+
+jobs:
+  build-darwin:
+    name: Build Python for iOS and macOS
+    runs-on: macos-14
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Show Python version
+        run: python --version
+
+      - name: Build Python for iOS and macOS
+        working-directory: darwin
+        run: |
+          git clone --branch="$PYTHON_VERSION_SHORT" https://github.com/beeware/Python-Apple-support.git
+          mkdir -p dist
+
+          pushd Python-Apple-support
+          make iOS
+          tar -czf ../dist/python-ios-mobile-forge-$PYTHON_VERSION_SHORT.tar.gz install support -C .
+          make macOS
+          popd
+
+          ./package-ios-for-dart.sh Python-Apple-support "$PYTHON_VERSION_SHORT"
+          ./package-macos-for-dart.sh Python-Apple-support "$PYTHON_VERSION_SHORT"
+
+      - name: Upload Darwin build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-darwin
+          path: darwin/dist/python-*.tar.gz
+          if-no-files-found: error
+
+  build-android:
+    name: Build Python for Android
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: python --version
+      - working-directory: android
+        run: |
+          ./build-all.sh "$PYTHON_VERSION"
+          mkdir -p dist
+          tar -czf dist/python-android-mobile-forge-$PYTHON_VERSION_SHORT.tar.gz install support
+          ./package-for-dart.sh install "$PYTHON_VERSION" arm64-v8a
+          ./package-for-dart.sh install "$PYTHON_VERSION" armeabi-v7a
+          ./package-for-dart.sh install "$PYTHON_VERSION" x86_64
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-android
+          path: android/dist/python-android-*.tar.gz
+          if-no-files-found: error
+
+  build-linux:
+    name: Build Python for Linux
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - working-directory: linux
+        run: |
+          ./package-for-linux.sh x86_64 "_v2"
+          ./package-for-linux.sh aarch64 ""
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-linux
+          path: linux/python-linux-dart-*.tar.gz
+          if-no-files-found: error
+
+  build-windows:
+    name: Build Python for Windows
+    runs-on: windows-2022
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show bundled Python
+        run: C:\Python312\python --version
+      - name: Reinstall requested Python version
+        working-directory: windows
+        shell: cmd
+        run: |
+          curl -OL https://www.python.org/ftp/python/3.12.8/python-3.12.8-amd64.exe
+          start /wait python-3.12.8-amd64.exe /uninstall /quiet
+          curl -OL https://www.python.org/ftp/python/%PYTHON_VERSION%/python-%PYTHON_VERSION%-amd64.exe
+          start /wait python-%PYTHON_VERSION%-amd64.exe /quiet
+          C:\python312-dist\python -m compileall -b C:\python312-dist\Lib
+          7z a -xr@exclude.txt python-windows-for-dart-%PYTHON_VERSION_SHORT%.zip C:\python312-dist\*
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-windows
+          path: windows/python-windows-for-dart-*.zip
+          if-no-files-found: error
+
+#   publish-release:
+#     name: Publish Release Assets
+#     runs-on: ubuntu-latest
+#     needs:
+#       - build-darwin
+#       - build-android
+#       - build-linux
+#       - build-windows
+#     permissions:
+#       contents: write
+#     steps:
+#       - name: Download all build artifacts
+#         uses: actions/download-artifact@v4
+#         with:
+#           pattern: python-*
+#           path: release-artifacts
+#           merge-multiple: true
+
+#       - name: Publish all artifacts to release
+#         uses: softprops/action-gh-release@v2
+#         with:
+#           tag_name: v${{ env.PYTHON_VERSION_SHORT }}
+#           files: release-artifacts/*
+#           fail_on_unmatched_files: true
+#           generate_release_notes: false
+#           draft: false
+#           prerelease: false
