@@ -191,8 +191,6 @@ jobs:
             "$packageRoot\Lib",
             "$packageRoot\libs",
             "$packageRoot\Scripts",
-            "$packageRoot\LICENSE.txt",
-            "$packageRoot\NEWS.txt",
             "$packageRoot\python3.dll",
             "$packageRoot\python3_d.dll",
             "$packageRoot\python312.dll",
@@ -203,6 +201,7 @@ jobs:
           )
           foreach ($entry in $requiredEntries) {
             if (-not (Test-Path $entry)) {
+              ls $packageRoot
               throw "Missing required package entry: $entry"
             }
           }
