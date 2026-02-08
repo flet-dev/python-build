@@ -8,95 +8,94 @@ on:
 
 env:
   PYTHON_VERSION: 3.12.12
-  PYTHON_WINDOWS_VERSION: 3.12.10
   PYTHON_VERSION_SHORT: 3.12
   PYTHON_DIST_RELEASE: 20260203
 
 jobs:
-  build-darwin:
-    name: Build Python for iOS and macOS
-    runs-on: macos-15
-    permissions:
-      contents: write
+#   build-darwin:
+#     name: Build Python for iOS and macOS
+#     runs-on: macos-15
+#     permissions:
+#       contents: write
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+#     steps:
+#       - name: Checkout
+#         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: ${{ env.PYTHON_VERSION_SHORT }}
+#       - name: Setup Python
+#         uses: actions/setup-python@v6
+#         with:
+#           python-version: ${{ env.PYTHON_VERSION_SHORT }}
 
-      - name: Show Python version
-        run: python --version
+#       - name: Show Python version
+#         run: python --version
 
-      - name: Build Python for iOS and macOS
-        working-directory: darwin
-        shell: bash
-        run: |
-          git clone --branch="$PYTHON_VERSION_SHORT" https://github.com/beeware/Python-Apple-support.git
-          mkdir -p dist
+#       - name: Build Python for iOS and macOS
+#         working-directory: darwin
+#         shell: bash
+#         run: |
+#           git clone --branch="$PYTHON_VERSION_SHORT" https://github.com/beeware/Python-Apple-support.git
+#           mkdir -p dist
 
-          pushd Python-Apple-support
-          make iOS
-          tar -czf ../dist/python-ios-mobile-forge-$PYTHON_VERSION_SHORT.tar.gz install support -C .
-          make macOS
-          popd
+#           pushd Python-Apple-support
+#           make iOS
+#           tar -czf ../dist/python-ios-mobile-forge-$PYTHON_VERSION_SHORT.tar.gz install support -C .
+#           make macOS
+#           popd
 
-          bash ./package-ios-for-dart.sh Python-Apple-support "$PYTHON_VERSION_SHORT"
-          bash ./package-macos-for-dart.sh Python-Apple-support "$PYTHON_VERSION_SHORT"
+#           bash ./package-ios-for-dart.sh Python-Apple-support "$PYTHON_VERSION_SHORT"
+#           bash ./package-macos-for-dart.sh Python-Apple-support "$PYTHON_VERSION_SHORT"
 
-      - name: Upload Darwin build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: python-darwin
-          path: darwin/dist/python-*.tar.gz
-          if-no-files-found: error
+#       - name: Upload Darwin build artifacts
+#         uses: actions/upload-artifact@v4
+#         with:
+#           name: python-darwin
+#           path: darwin/dist/python-*.tar.gz
+#           if-no-files-found: error
 
-  build-android:
-    name: Build Python for Android
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: ${{ env.PYTHON_VERSION }}
-      - run: python --version
-      - working-directory: android
-        shell: bash
-        run: |
-          bash ./build-all.sh "$PYTHON_VERSION"
-          mkdir -p dist
-          tar -czf dist/python-android-mobile-forge-$PYTHON_VERSION_SHORT.tar.gz install support
-          bash ./package-for-dart.sh install "$PYTHON_VERSION" arm64-v8a
-          bash ./package-for-dart.sh install "$PYTHON_VERSION" armeabi-v7a
-          bash ./package-for-dart.sh install "$PYTHON_VERSION" x86_64
-      - uses: actions/upload-artifact@v4
-        with:
-          name: python-android
-          path: android/dist/python-android-*.tar.gz
-          if-no-files-found: error
+#   build-android:
+#     name: Build Python for Android
+#     runs-on: ubuntu-latest
+#     permissions:
+#       contents: write
+#     steps:
+#       - uses: actions/checkout@v4
+#       - uses: actions/setup-python@v5
+#         with:
+#           python-version: ${{ env.PYTHON_VERSION }}
+#       - run: python --version
+#       - working-directory: android
+#         shell: bash
+#         run: |
+#           bash ./build-all.sh "$PYTHON_VERSION"
+#           mkdir -p dist
+#           tar -czf dist/python-android-mobile-forge-$PYTHON_VERSION_SHORT.tar.gz install support
+#           bash ./package-for-dart.sh install "$PYTHON_VERSION" arm64-v8a
+#           bash ./package-for-dart.sh install "$PYTHON_VERSION" armeabi-v7a
+#           bash ./package-for-dart.sh install "$PYTHON_VERSION" x86_64
+#       - uses: actions/upload-artifact@v4
+#         with:
+#           name: python-android
+#           path: android/dist/python-android-*.tar.gz
+#           if-no-files-found: error
 
-  build-linux:
-    name: Build Python for Linux
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-      - working-directory: linux
-        shell: bash
-        run: |
-          bash ./package-for-linux.sh x86_64 "_v2"
-          bash ./package-for-linux.sh aarch64 ""
-      - uses: actions/upload-artifact@v4
-        with:
-          name: python-linux
-          path: linux/python-linux-dart-*.tar.gz
-          if-no-files-found: error
+#   build-linux:
+#     name: Build Python for Linux
+#     runs-on: ubuntu-latest
+#     permissions:
+#       contents: write
+#     steps:
+#       - uses: actions/checkout@v4
+#       - working-directory: linux
+#         shell: bash
+#         run: |
+#           bash ./package-for-linux.sh x86_64 "_v2"
+#           bash ./package-for-linux.sh aarch64 ""
+#       - uses: actions/upload-artifact@v4
+#         with:
+#           name: python-linux
+#           path: linux/python-linux-dart-*.tar.gz
+#           if-no-files-found: error
 
   build-windows:
     name: Build Python for Windows
@@ -105,14 +104,111 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
-      - name: Install requested Python version
-        working-directory: windows
-        shell: cmd
+      - name: Build CPython from sources and package for Dart
+        shell: pwsh
         run: |
-          curl -OL https://www.python.org/ftp/python/${{ env.PYTHON_WINDOWS_VERSION }}/python-${{ env.PYTHON_WINDOWS_VERSION }}-amd64.exe
-          start /wait python-${{ env.PYTHON_WINDOWS_VERSION }}-amd64.exe /quiet
-          C:\python312-dist\python -m compileall -b C:\python312-dist\Lib
-          7z a -xr@exclude.txt python-windows-for-dart-%PYTHON_VERSION_SHORT%.zip C:\python312-dist\*
+          $ErrorActionPreference = "Stop"
+
+          $pyVer = "${{ env.PYTHON_VERSION }}"
+          $pyShort = "${{ env.PYTHON_VERSION_SHORT }}"
+          $workspace = $env:GITHUB_WORKSPACE
+
+          $srcRoot = Join-Path $workspace "windows\build"
+          $srcArchive = Join-Path $srcRoot "Python-$pyVer.tgz"
+          $srcDir = Join-Path $srcRoot "Python-$pyVer"
+          $pcbuildDir = Join-Path $srcDir "PCbuild\amd64"
+
+          $packageRoot = Join-Path $workspace "windows\python-windows-for-dart-$pyShort"
+          $zipPath = Join-Path $workspace "windows\python-windows-for-dart-$pyShort.zip"
+
+          New-Item -ItemType Directory -Force -Path $srcRoot | Out-Null
+
+          Write-Host "Downloading CPython source $pyVer"
+          Invoke-WebRequest -Uri "https://www.python.org/ftp/python/$pyVer/Python-$pyVer.tgz" -OutFile $srcArchive
+          tar -xf $srcArchive -C $srcRoot
+
+          Push-Location $srcDir
+          cmd /c "PCbuild\build.bat -e -p x64 -c Release"
+          cmd /c "PCbuild\build.bat -e -p x64 -c Debug"
+          Pop-Location
+
+          Remove-Item -Recurse -Force $packageRoot -ErrorAction SilentlyContinue
+          New-Item -ItemType Directory -Force -Path "$packageRoot\DLLs", "$packageRoot\include", "$packageRoot\Lib", "$packageRoot\libs", "$packageRoot\Scripts" | Out-Null
+
+          Copy-Item -Path "$srcDir\Include\*" -Destination "$packageRoot\include" -Recurse -Force
+          Copy-Item -Path "$srcDir\Lib\*" -Destination "$packageRoot\Lib" -Recurse -Force
+
+          # Root binaries and symbols.
+          foreach ($name in @("LICENSE.txt", "NEWS.txt")) {
+            $src = Join-Path $srcDir $name
+            if (Test-Path $src) {
+              Copy-Item -Path $src -Destination $packageRoot -Force
+            }
+          }
+
+          $rootFiles = @(
+            "python3.dll",
+            "python3_d.dll",
+            "python312.dll",
+            "python312_d.dll",
+            "python312_d.pdb",
+            "python_d.pdb",
+            "pythonw_d.pdb"
+          )
+          foreach ($name in $rootFiles) {
+            $src = Join-Path $pcbuildDir $name
+            if (Test-Path $src) {
+              Copy-Item -Path $src -Destination $packageRoot -Force
+            }
+          }
+
+          foreach ($name in @("vcruntime140.dll", "vcruntime140_1.dll")) {
+            $fromBuild = Join-Path $pcbuildDir $name
+            $fromSystem = Join-Path "$env:WINDIR\System32" $name
+            if (Test-Path $fromBuild) {
+              Copy-Item -Path $fromBuild -Destination $packageRoot -Force
+            } elseif (Test-Path $fromSystem) {
+              Copy-Item -Path $fromSystem -Destination $packageRoot -Force
+            }
+          }
+
+          # Extension modules and supporting DLLs.
+          Get-ChildItem -Path $pcbuildDir -Filter "*.pyd" -File | Copy-Item -Destination "$packageRoot\DLLs" -Force
+          Get-ChildItem -Path $pcbuildDir -Filter "*.dll" -File |
+            Where-Object { $_.Name -notin @("python3.dll", "python3_d.dll", "python312.dll", "python312_d.dll", "vcruntime140.dll", "vcruntime140_1.dll") } |
+            Copy-Item -Destination "$packageRoot\DLLs" -Force
+          Get-ChildItem -Path $pcbuildDir -Filter "*.lib" -File | Copy-Item -Destination "$packageRoot\libs" -Force
+
+          # Match existing packaging behavior: bytecode-only stdlib.
+          py -3 -m compileall -b "$packageRoot\Lib"
+          Get-ChildItem -Path "$packageRoot\Lib" -Recurse -File -Include *.py,*.typed | Remove-Item -Force
+          Get-ChildItem -Path "$packageRoot\Lib" -Recurse -Directory -Filter __pycache__ | Remove-Item -Recurse -Force
+
+          # Fail fast if required layout entries are missing.
+          $requiredEntries = @(
+            "$packageRoot\DLLs",
+            "$packageRoot\include",
+            "$packageRoot\Lib",
+            "$packageRoot\libs",
+            "$packageRoot\Scripts",
+            "$packageRoot\LICENSE.txt",
+            "$packageRoot\NEWS.txt",
+            "$packageRoot\python3.dll",
+            "$packageRoot\python3_d.dll",
+            "$packageRoot\python312.dll",
+            "$packageRoot\python312_d.dll",
+            "$packageRoot\python312_d.pdb",
+            "$packageRoot\python_d.pdb",
+            "$packageRoot\pythonw_d.pdb"
+          )
+          foreach ($entry in $requiredEntries) {
+            if (-not (Test-Path $entry)) {
+              throw "Missing required package entry: $entry"
+            }
+          }
+
+          Remove-Item -Force $zipPath -ErrorAction SilentlyContinue
+          7z a $zipPath "$packageRoot\*"
       - uses: actions/upload-artifact@v4
         with:
           name: python-windows
