@@ -13,7 +13,7 @@ env:
 jobs:
   build-darwin:
     name: Build Python for iOS and macOS
-    runs-on: macos-14
+    runs-on: macos-15
     permissions:
       contents: write
 
