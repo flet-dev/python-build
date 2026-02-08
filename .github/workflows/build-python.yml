@@ -3,8 +3,7 @@ name: Build Python Packages
 on:
   push:
     branches:
-      - main
-      - master
+      - '**'
   workflow_dispatch:
 
 env:
