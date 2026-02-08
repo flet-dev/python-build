@@ -5,7 +5,7 @@
 : ${api_level:=24}  # Minimum Android API level the build will run on
 : ${PREFIX:-}  # Path in which to find required libraries
 
-NDK_VERSION=r27c
+NDK_VERSION=r29
 
 # Print all messages on stderr so they're visible when running within build-wheel.
 log() {
