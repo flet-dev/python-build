@@ -1,0 +1,25 @@
+# Files and directories to exclude from Windows Dart package.
+# Patterns are relative to package root: python-windows-for-dart-<version>/
+
+# Stdlib content not needed for embedded runtime package.
+Lib/test
+Lib/idlelib
+Lib/tkinter
+Lib/turtledemo
+Lib/ensurepip
+Lib/pydoc_data
+Lib/lib2to3
+Lib/site-packages/pip*
+Lib/site-packages/setuptools*
+Lib/site-packages/wheel*
+
+# Optional/test/GUI extension modules and DLLs.
+DLLs/_test*.pyd
+DLLs/_ctypes_test*.pyd
+DLLs/_tkinter*.pyd
+DLLs/xxlimited*.pyd
+DLLs/tcl86t.dll
+DLLs/tk86t.dll
+DLLs/zlib1.dll
+DLLs/pyshellext.dll
+DLLs/pyshellext_d.dll
