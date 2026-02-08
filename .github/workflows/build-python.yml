@@ -122,10 +122,11 @@ jobs:
           $zipPath = Join-Path $workspace "windows\python-windows-for-dart-$pyShort.zip"
 
           # Cleanup/include lists kept in one place for visibility and maintenance.
-          $pruneLibDirs = @("test", "idlelib", "tkinter", "turtledemo")
+          $pruneLibDirs = @("test", "idlelib", "tkinter", "turtledemo", "ensurepip", "pydoc_data", "lib2to3")
           $pruneDllPatterns = @("_test*.pyd", "_ctypes_test*.pyd", "_tkinter*.pyd", "xxlimited*.pyd")
           $pruneDllFiles = @("tcl86t.dll", "tk86t.dll", "zlib1.dll", "pyshellext.dll", "pyshellext_d.dll")
           $keepImportLibs = @("python3.lib", "python3_d.lib", "python312.lib", "python312_d.lib")
+          $pruneSitePackagesPatterns = @("pip*", "setuptools*", "wheel*")
 
           New-Item -ItemType Directory -Force -Path $srcRoot | Out-Null
 
@@ -190,6 +191,12 @@ jobs:
             $dirPath = Join-Path "$packageRoot\Lib" $dirName
             if (Test-Path $dirPath) {
               Remove-Item -Recurse -Force $dirPath
+            }
+          }
+          $sitePackagesDir = Join-Path "$packageRoot\Lib" "site-packages"
+          if (Test-Path $sitePackagesDir) {
+            foreach ($pattern in $pruneSitePackagesPatterns) {
+              Get-ChildItem -Path $sitePackagesDir -Filter $pattern -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
             }
           }
 
