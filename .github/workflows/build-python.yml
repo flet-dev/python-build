@@ -121,6 +121,12 @@ jobs:
           $packageRoot = Join-Path $workspace "windows\python-windows-for-dart-$pyShort"
           $zipPath = Join-Path $workspace "windows\python-windows-for-dart-$pyShort.zip"
 
+          # Cleanup/include lists kept in one place for visibility and maintenance.
+          $pruneLibDirs = @("test", "idlelib", "tkinter", "turtledemo")
+          $pruneDllPatterns = @("_test*.pyd", "_ctypes_test*.pyd", "_tkinter*.pyd", "xxlimited*.pyd")
+          $pruneDllFiles = @("tcl86t.dll", "tk86t.dll", "zlib1.dll", "pyshellext.dll", "pyshellext_d.dll")
+          $keepImportLibs = @("python3.lib", "python3_d.lib", "python312.lib", "python312_d.lib")
+
           New-Item -ItemType Directory -Force -Path $srcRoot | Out-Null
 
           Write-Host "Downloading CPython source $pyVer"
@@ -178,6 +184,28 @@ jobs:
             Where-Object { $_.Name -notin @("python3.dll", "python3_d.dll", "python312.dll", "python312_d.dll", "vcruntime140.dll", "vcruntime140_1.dll") } |
             Copy-Item -Destination "$packageRoot\DLLs" -Force
           Get-ChildItem -Path $pcbuildDir -Filter "*.lib" -File | Copy-Item -Destination "$packageRoot\libs" -Force
+
+          # Cleanup to keep package close to the original installer-based zip size/layout.
+          foreach ($dirName in $pruneLibDirs) {
+            $dirPath = Join-Path "$packageRoot\Lib" $dirName
+            if (Test-Path $dirPath) {
+              Remove-Item -Recurse -Force $dirPath
+            }
+          }
+
+          foreach ($pattern in $pruneDllPatterns) {
+            Get-ChildItem -Path "$packageRoot\DLLs" -Filter $pattern -File -ErrorAction SilentlyContinue | Remove-Item -Force
+          }
+          foreach ($name in $pruneDllFiles) {
+            $filePath = Join-Path "$packageRoot\DLLs" $name
+            if (Test-Path $filePath) {
+              Remove-Item -Force $filePath
+            }
+          }
+
+          Get-ChildItem -Path "$packageRoot\libs" -Filter "*.lib" -File |
+            Where-Object { $_.Name -notin $keepImportLibs } |
+            Remove-Item -Force
 
           # Match existing packaging behavior: bytecode-only stdlib.
           py -3 -m compileall -b "$packageRoot\Lib"
