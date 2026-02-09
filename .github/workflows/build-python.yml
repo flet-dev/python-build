@@ -146,7 +146,7 @@ jobs:
       - name: Publish all artifacts to release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ env.PYTHON_VERSION }}
+          tag_name: v${{ env.PYTHON_VERSION_SHORT }}
           files: release-artifacts/*
           fail_on_unmatched_files: true
           generate_release_notes: false
