@@ -41,6 +41,13 @@ New-Item -ItemType Directory -Force -Path "$packageRoot\DLLs", "$packageRoot\inc
 Copy-Item -Path "$srcDir\Include\*" -Destination "$packageRoot\include" -Recurse -Force
 Copy-Item -Path "$srcDir\Lib\*" -Destination "$packageRoot\Lib" -Recurse -Force
 
+# pyconfig.h is generated/platform-specific and lives under PC on Windows builds.
+$pyconfigHeader = Join-Path $srcDir "PC\pyconfig.h"
+if (-not (Test-Path $pyconfigHeader)) {
+  throw "Missing required header: $pyconfigHeader"
+}
+Copy-Item -Path $pyconfigHeader -Destination "$packageRoot\include\pyconfig.h" -Force
+
 # Root binaries and symbols.
 foreach ($name in @("LICENSE.txt", "NEWS.txt")) {
   $src = Join-Path $srcDir $name
