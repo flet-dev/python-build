@@ -110,7 +110,7 @@ foreach ($pattern in $excludePatterns) {
 }
 
 # Match existing packaging behavior: bytecode-only stdlib.
-py -3 -m compileall -b "$packageRoot\Lib"
+python -m compileall -b "$packageRoot\Lib"
 Get-ChildItem -Path "$packageRoot\Lib" -Recurse -File -Include *.py,*.typed | Remove-Item -Force
 Get-ChildItem -Path "$packageRoot\Lib" -Recurse -Directory -Filter __pycache__ | Remove-Item -Recurse -Force
 
