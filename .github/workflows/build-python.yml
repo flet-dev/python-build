@@ -104,6 +104,15 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION_SHORT }}
+      - name: Show Python version
+        shell: pwsh
+        run: |
+          python --version
+          py -3 --version
       - name: Build CPython from sources and package for Dart
         shell: pwsh
         run: |
