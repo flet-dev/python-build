@@ -114,13 +114,18 @@ py -3 -m compileall -b "$packageRoot\Lib"
 Get-ChildItem -Path "$packageRoot\Lib" -Recurse -File -Include *.py,*.typed | Remove-Item -Force
 Get-ChildItem -Path "$packageRoot\Lib" -Recurse -Directory -Filter __pycache__ | Remove-Item -Recurse -Force
 
+# Remove empty directories left after exclusions/cleanup.
+Get-ChildItem -Path $packageRoot -Recurse -Directory |
+  Sort-Object { $_.FullName.Length } -Descending |
+  Where-Object { (Get-ChildItem -Path $_.FullName -Force | Measure-Object).Count -eq 0 } |
+  Remove-Item -Force
+
 # Fail fast if required layout entries are missing.
 $requiredEntries = @(
   "$packageRoot\DLLs",
   "$packageRoot\include",
   "$packageRoot\Lib",
   "$packageRoot\libs",
-  "$packageRoot\Scripts",
   "$packageRoot\python3.dll",
   "$packageRoot\python3_d.dll",
   "$packageRoot\python312.dll",
