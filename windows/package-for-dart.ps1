@@ -30,6 +30,14 @@ Write-Host "Downloading CPython source $PythonVersion"
 Invoke-WebRequest -Uri "https://www.python.org/ftp/python/$PythonVersion/Python-$PythonVersion.tgz" -OutFile $srcArchive
 tar -xf $srcArchive -C $srcRoot
 
+# Force PCbuild helper scripts to use configured Python, not py.exe launcher.
+$pythonFromPath = (Get-Command python).Source
+if (-not $pythonFromPath) {
+  throw "python was not found in PATH"
+}
+$env:PYTHON = $pythonFromPath
+$env:PYTHON_FOR_BUILD = $pythonFromPath
+
 Push-Location $srcDir
 cmd /c "PCbuild\build.bat -e -p x64 -c Release"
 cmd /c "PCbuild\build.bat -e -p x64 -c Debug"
