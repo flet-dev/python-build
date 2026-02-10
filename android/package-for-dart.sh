@@ -6,6 +6,8 @@ python_version=${2:?}
 abi=${3:?}
 
 script_dir=$(dirname $(realpath $0))
+downloads=$script_dir/downloads
+mkdir -p $downloads
 
 . abi-to-host.sh
 . android-env.sh

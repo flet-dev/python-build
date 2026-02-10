@@ -18,11 +18,12 @@ $srcRoot = Join-Path $workspace "windows\build"
 $srcArchive = Join-Path $srcRoot "Python-$PythonVersion.tgz"
 $srcDir = Join-Path $srcRoot "Python-$PythonVersion"
 $pcbuildDir = Join-Path $srcDir "PCbuild\amd64"
+$pythonTag = $PythonVersionShort -replace '\.', ''
 
 $packageRoot = Join-Path $workspace "windows\python-windows-for-dart-$PythonVersionShort"
 $zipPath = Join-Path $workspace "windows\python-windows-for-dart-$PythonVersionShort.zip"
 $excludeListPath = Join-Path $workspace "windows\python-windows-dart.exclude"
-$keepImportLibs = @("python3.lib", "python3_d.lib", "python312.lib", "python312_d.lib")
+$keepImportLibs = @("python3.lib", "python3_d.lib", "python$pythonTag.lib", "python${pythonTag}_d.lib")
 
 New-Item -ItemType Directory -Force -Path $srcRoot | Out-Null
 
@@ -49,10 +50,22 @@ New-Item -ItemType Directory -Force -Path "$packageRoot\DLLs", "$packageRoot\inc
 Copy-Item -Path "$srcDir\Include\*" -Destination "$packageRoot\include" -Recurse -Force
 Copy-Item -Path "$srcDir\Lib\*" -Destination "$packageRoot\Lib" -Recurse -Force
 
-# pyconfig.h is generated/platform-specific and lives under PC on Windows builds.
-$pyconfigHeader = Join-Path $srcDir "PC\pyconfig.h"
-if (-not (Test-Path $pyconfigHeader)) {
-  throw "Missing required header: $pyconfigHeader"
+# pyconfig.h location varies by CPython version/build layout.
+$pyconfigCandidates = @(
+  (Join-Path $srcDir "PC\pyconfig.h"),
+  (Join-Path $srcDir "Include\pyconfig.h"),
+  (Join-Path $pcbuildDir "pyconfig.h")
+)
+$pyconfigHeader = $null
+foreach ($candidate in $pyconfigCandidates) {
+  if (Test-Path $candidate) {
+    $pyconfigHeader = $candidate
+    break
+  }
+}
+if (-not $pyconfigHeader) {
+  $candidateList = $pyconfigCandidates -join ", "
+  throw "Missing required header. Checked: $candidateList"
 }
 Copy-Item -Path $pyconfigHeader -Destination "$packageRoot\include\pyconfig.h" -Force
 
@@ -67,9 +80,9 @@ foreach ($name in @("LICENSE.txt", "NEWS.txt")) {
 $rootFiles = @(
   "python3.dll",
   "python3_d.dll",
-  "python312.dll",
-  "python312_d.dll",
-  "python312_d.pdb",
+  "python$pythonTag.dll",
+  "python${pythonTag}_d.dll",
+  "python${pythonTag}_d.pdb",
   "python_d.pdb",
   "pythonw_d.pdb"
 )
@@ -93,7 +106,7 @@ foreach ($name in @("vcruntime140.dll", "vcruntime140_1.dll")) {
 # Extension modules and supporting DLLs.
 Get-ChildItem -Path $pcbuildDir -Filter "*.pyd" -File | Copy-Item -Destination "$packageRoot\DLLs" -Force
 Get-ChildItem -Path $pcbuildDir -Filter "*.dll" -File |
-  Where-Object { $_.Name -notin @("python3.dll", "python3_d.dll", "python312.dll", "python312_d.dll", "vcruntime140.dll", "vcruntime140_1.dll") } |
+  Where-Object { $_.Name -notin @("python3.dll", "python3_d.dll", "python$pythonTag.dll", "python${pythonTag}_d.dll", "vcruntime140.dll", "vcruntime140_1.dll") } |
   Copy-Item -Destination "$packageRoot\DLLs" -Force
 foreach ($name in $keepImportLibs) {
   $src = Join-Path $pcbuildDir $name
@@ -118,7 +131,7 @@ foreach ($pattern in $excludePatterns) {
 }
 
 # Match existing packaging behavior: bytecode-only stdlib.
-python -m compileall -b "$packageRoot\Lib"
+& $pythonFromPath -I -m compileall -b "$packageRoot\Lib"
 Get-ChildItem -Path "$packageRoot\Lib" -Recurse -File -Include *.py,*.typed | Remove-Item -Force
 Get-ChildItem -Path "$packageRoot\Lib" -Recurse -Directory -Filter __pycache__ | Remove-Item -Recurse -Force
 
@@ -136,9 +149,9 @@ $requiredEntries = @(
   "$packageRoot\libs",
   "$packageRoot\python3.dll",
   "$packageRoot\python3_d.dll",
-  "$packageRoot\python312.dll",
-  "$packageRoot\python312_d.dll",
-  "$packageRoot\python312_d.pdb",
+  "$packageRoot\python$pythonTag.dll",
+  "$packageRoot\python${pythonTag}_d.dll",
+  "$packageRoot\python${pythonTag}_d.pdb",
   "$packageRoot\python_d.pdb",
   "$packageRoot\pythonw_d.pdb"
 )
