@@ -13,6 +13,11 @@ script_dir=$(dirname $(realpath $0))
 # build short Python version
 read python_version_major python_version_minor < <(echo $python_version | sed -E 's/^([0-9]+)\.([0-9]+).*/\1 \2/')
 python_version_short=$python_version_major.$python_version_minor
+python_bin=$(command -v "python$python_version_short" || true)
+if [ -z "$python_bin" ]; then
+    echo "python$python_version_short is required to compile stdlib bytecode"
+    exit 1
+fi
 
 # create build dir
 build_dir=build/python-$python_version/$abi
@@ -39,8 +44,8 @@ mv $build_dir/lib/python$python_version_short/lib-dynload $bundle_dir/modules
 
 # stdlib
 # stdlib_zip=$bundle_dir/stdlib.zip
+"$python_bin" -I -m compileall -b "$build_dir/lib/python$python_version_short"
 cd $build_dir/lib/python$python_version_short
-python -m compileall -b .
 find . \( -name '*.so' -or -name '*.py' -or -name '*.typed' \) -type f -delete
 rm -rf __pycache__
 rm -rf **/__pycache__

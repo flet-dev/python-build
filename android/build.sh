@@ -20,7 +20,11 @@ mkdir -p $downloads
 
 cd $script_dir
 . abi-to-host.sh
-. android-env.sh
+: ${api_level:=24}
+
+if [ $version_int -le 312 ]; then
+    . android-env.sh
+fi
 
 # Download and unpack Python source code.
 version_dir=$script_dir/build/$version
@@ -48,10 +52,6 @@ if [ $version_int -le 312 ]; then
 fi
 if [ $version_int -eq 312 ]; then
     patches+=" bldlibrary grp"
-fi
-if [ $version_int -eq 313 ]; then
-    # TODO: remove this once it's merged upstream.
-    patches+=" 3.13_pending"
 fi
 for name in $patches; do
     patch_file="$script_dir/patches/$name.patch"
@@ -145,9 +145,43 @@ if [ $version_int -le 312 ]; then
 
 # Python 3.13 and later comes with an official Android build script.
 else
-    mkdir -p cross-build/build
-    ln -s "$(which python$version_short)" cross-build/build/python
+    case "$abi" in
+        arm64-v8a|x86_64)
+            ;;
+        *)
+            echo "Python $version_short official Android build supports only: arm64-v8a, x86_64"
+            exit 1
+            ;;
+    esac
 
+    # CPython's Android tooling expects ANDROID_HOME and ANDROID_API_LEVEL.
+    export ANDROID_API_LEVEL="$api_level"
+    if [ -z "${ANDROID_HOME:-}" ]; then
+        if [ -d "$HOME/Library/Android/sdk" ]; then
+            export ANDROID_HOME="$HOME/Library/Android/sdk"
+        elif [ -d "$HOME/Android/Sdk" ]; then
+            export ANDROID_HOME="$HOME/Android/Sdk"
+        else
+            export ANDROID_HOME="$script_dir/android-sdk"
+            mkdir -p "$ANDROID_HOME"
+        fi
+    fi
+
+    # Reuse NDK installed by this repo's older workflow by exposing it
+    # at the path expected by CPython's Android/android-env.sh.
+    if [ -z "${NDK_HOME:-}" ] && [ -d "$HOME/ndk/r29" ]; then
+        export NDK_HOME="$HOME/ndk/r29"
+    fi
+    cpython_ndk_version=$(sed -n 's/^ndk_version=//p' Android/android-env.sh | head -n1)
+    if [ -n "${NDK_HOME:-}" ] && [ -d "$NDK_HOME" ] && [ -n "${cpython_ndk_version:-}" ]; then
+        mkdir -p "$ANDROID_HOME/ndk"
+        if [ ! -e "$ANDROID_HOME/ndk/$cpython_ndk_version" ]; then
+            ln -s "$NDK_HOME" "$ANDROID_HOME/ndk/$cpython_ndk_version"
+        fi
+    fi
+
+    Android/android.py configure-build
+    Android/android.py make-build
     Android/android.py configure-host "$HOST"
     Android/android.py make-host "$HOST"
     cp -a "cross-build/$HOST/prefix/"* "$PREFIX"
