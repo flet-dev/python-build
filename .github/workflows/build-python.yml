@@ -72,11 +72,6 @@ jobs:
           tar -czf dist/python-android-mobile-forge-$PYTHON_VERSION_SHORT.tar.gz install support
           bash ./package-for-dart.sh install "$PYTHON_VERSION" arm64-v8a
           bash ./package-for-dart.sh install "$PYTHON_VERSION" x86_64
-          read version_major version_minor < <(echo "$PYTHON_VERSION" | sed -E 's/^([0-9]+)\.([0-9]+).*/\1 \2/')
-          version_int=$((version_major * 100 + version_minor))
-          if [ $version_int -lt 313 ]; then
-            bash ./package-for-dart.sh install "$PYTHON_VERSION" armeabi-v7a
-          fi
       - uses: actions/upload-artifact@v4
         with:
           name: python-android

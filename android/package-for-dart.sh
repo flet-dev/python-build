@@ -6,11 +6,44 @@ python_version=${2:?}
 abi=${3:?}
 
 script_dir=$(dirname $(realpath $0))
-downloads=$script_dir/downloads
-mkdir -p $downloads
 
 . abi-to-host.sh
-. android-env.sh
+
+if [ -z "${NDK_HOME:-}" ]; then
+    sdk_candidates=""
+    if [ -n "${ANDROID_HOME:-}" ]; then
+        sdk_candidates+="$ANDROID_HOME "
+    fi
+    if [ -d "$HOME/Library/Android/sdk" ]; then
+        sdk_candidates+="$HOME/Library/Android/sdk "
+    fi
+    if [ -d "$HOME/Android/Sdk" ]; then
+        sdk_candidates+="$HOME/Android/Sdk "
+    fi
+    if [ -d "$script_dir/android-sdk" ]; then
+        sdk_candidates+="$script_dir/android-sdk "
+    fi
+
+    for sdk_root in $sdk_candidates; do
+        ndk_candidate=$(ls -d "$sdk_root"/ndk/* 2>/dev/null | sort -V | tail -n1 || true)
+        if [ -n "$ndk_candidate" ]; then
+            NDK_HOME="$ndk_candidate"
+            break
+        fi
+    done
+fi
+
+if [ -z "${NDK_HOME:-}" ] || [ ! -d "$NDK_HOME" ]; then
+    echo "NDK_HOME is not set and no NDK was found in Android SDK locations."
+    exit 1
+fi
+
+toolchain=$(echo "$NDK_HOME"/toolchains/llvm/prebuilt/*)
+STRIP="$toolchain/bin/llvm-strip"
+if [ ! -x "$STRIP" ]; then
+    echo "llvm-strip not found at: $STRIP"
+    exit 1
+fi
 
 # build short Python version
 read python_version_major python_version_minor < <(echo $python_version | sed -E 's/^([0-9]+)\.([0-9]+).*/\1 \2/')

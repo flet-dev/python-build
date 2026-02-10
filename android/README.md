@@ -1,16 +1,15 @@
 # Python for Android
 
-Scripts and CI jobs for building Python 3 for Android.
+Scripts and CI jobs for building Python 3.13 for Android.
 
 * Can be run on both Linux and macOS.
-* Build Python 3.x - specific or the last minor version.
-* Installs NDK r29 or use pre-installed one with path configured by `NDK_HOME` variable.
+* Builds Python 3.13.x only.
 * Creates Python installation with a structure suitable for https://github.com/flet-dev/mobile-forge
-* Python 3.13+ uses CPython's official `Android/android.py` build flow.
+* Uses CPython's official `Android/android.py` build flow.
 
 ## Usage
 
-To build Python for a specific ABI:
+To build Python for a specific ABI (`arm64-v8a` or `x86_64`):
 
 ```
 ./build.sh 3.13.12 arm64-v8a
