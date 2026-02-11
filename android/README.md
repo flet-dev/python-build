@@ -4,7 +4,7 @@ Scripts and CI jobs for building Python 3 for Android.
 
 * Can be run on both Linux and macOS.
 * Build Python 3.12 - specific or the last minor version.
-* Installs NDK r29 or use pre-installed one with path configured by `NDK_HOME` variable.
+* Installs NDK r27d or use pre-installed one with path configured by `NDK_HOME` variable.
 * Creates Python installation with a structure suitable for https://github.com/flet-dev/mobile-forge
 
 ## Usage
