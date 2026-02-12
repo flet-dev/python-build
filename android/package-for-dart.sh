@@ -23,8 +23,17 @@ if [ -z "${NDK_HOME:-}" ]; then
     if [ -d "$script_dir/android-sdk" ]; then
         sdk_candidates+="$script_dir/android-sdk "
     fi
+    if [ -d "$HOME/ndk" ]; then
+        ndk_candidate=$(ls -d "$HOME/ndk"/* 2>/dev/null | sort -V | tail -n1 || true)
+        if [ -n "$ndk_candidate" ]; then
+            NDK_HOME="$ndk_candidate"
+        fi
+    fi
 
     for sdk_root in $sdk_candidates; do
+        if [ -n "${NDK_HOME:-}" ]; then
+            break
+        fi
         ndk_candidate=$(ls -d "$sdk_root"/ndk/* 2>/dev/null | sort -V | tail -n1 || true)
         if [ -n "$ndk_candidate" ]; then
             NDK_HOME="$ndk_candidate"

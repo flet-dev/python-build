@@ -9,19 +9,22 @@ read version_major version_minor version_micro < <(
 )
 version_short=$version_major.$version_minor
 version_no_pre=$version_major.$version_minor.$version_micro
-
-if [ "$version_short" != "3.13" ]; then
-    echo "This branch only supports Python 3.13.x for Android, got: $version"
-    exit 1
-fi
+version_int=$(($version_major * 100 + $version_minor))
 
 PREFIX="$script_dir/install/android/$abi/python-${version}"
 mkdir -p "$PREFIX"
 PREFIX=$(realpath "$PREFIX")
 
+downloads=$script_dir/downloads
+mkdir -p $downloads
+
 cd $script_dir
 . abi-to-host.sh
 : ${api_level:=24}
+
+if [ $version_int -le 312 ]; then
+    . android-env.sh
+fi
 
 # Download and unpack Python source code.
 version_dir=$script_dir/build/$version
@@ -36,6 +39,26 @@ tar -xf "$src_filename"
 mv "Python-$version" "$build_dir"
 cd "$build_dir"
 
+# Apply patches.
+patches=""
+if [ $version_int -le 311 ]; then
+    patches+=" sysroot_paths"
+fi
+if [ $version_int -eq 311 ]; then
+    patches+=" python_for_build_deps"
+fi
+if [ $version_int -le 312 ]; then
+    patches+=" soname"
+fi
+if [ $version_int -eq 312 ]; then
+    patches+=" bldlibrary grp"
+fi
+for name in $patches; do
+    patch_file="$script_dir/patches/$name.patch"
+    echo "$patch_file"
+    patch -p1 -i "$patch_file"
+done
+
 # Remove any existing installation in the prefix.
 rm -rf $PREFIX/{include,lib}/python$version_short
 rm -rf $PREFIX/lib/libpython$version_short*
@@ -45,47 +68,119 @@ support_versions=$script_dir/support/$version_short/android/VERSIONS
 mkdir -p $(dirname $support_versions)
 echo ">>> Create VERSIONS file for android"
 echo "Python version: $version" > $support_versions
-echo "Build: 1" >> $support_versions
-echo "Min android version: $api_level" >> $support_versions
+echo "Build: custom" >> $support_versions
+echo "Min Android version: $api_level" >> $support_versions
 echo "---------------------" >> $support_versions
 
-case "$abi" in
-    arm64-v8a|x86_64)
-        ;;
-    *)
-        echo "Python $version_short official Android build supports only: arm64-v8a, x86_64"
-        exit 1
-        ;;
-esac
-
-# CPython's Android tooling expects ANDROID_HOME and ANDROID_API_LEVEL.
-export ANDROID_API_LEVEL="$api_level"
-if [ -z "${ANDROID_HOME:-}" ]; then
-    if [ -d "$HOME/Library/Android/sdk" ]; then
-        export ANDROID_HOME="$HOME/Library/Android/sdk"
-    elif [ -d "$HOME/Android/Sdk" ]; then
-        export ANDROID_HOME="$HOME/Android/Sdk"
+if [ $version_int -le 312 ]; then
+    # Download and unpack libraries needed to compile Python. For a given Python
+    # version, we must maintain binary compatibility with existing wheels.
+    libs="bzip2-1.0.8-2 libffi-3.4.4-3 sqlite-3.45.3-3 xz-5.4.6-1"
+    if [ $version_int -le 308 ]; then
+        libs+=" openssl-1.1.1w-3"
     else
-        export ANDROID_HOME="$script_dir/android-sdk"
-        mkdir -p "$ANDROID_HOME"
+        libs+=" openssl-3.0.15-4"
     fi
-fi
 
-# Reuse NDK installed by this repo's older workflow by exposing it
-# at the path expected by CPython's Android/android-env.sh.
-if [ -z "${NDK_HOME:-}" ] && [ -d "$HOME/ndk/r29" ]; then
-    export NDK_HOME="$HOME/ndk/r29"
-fi
-cpython_ndk_version=$(sed -n 's/^ndk_version=//p' Android/android-env.sh | head -n1)
-if [ -n "${NDK_HOME:-}" ] && [ -d "$NDK_HOME" ] && [ -n "${cpython_ndk_version:-}" ]; then
-    mkdir -p "$ANDROID_HOME/ndk"
-    if [ ! -e "$ANDROID_HOME/ndk/$cpython_ndk_version" ]; then
-        ln -s "$NDK_HOME" "$ANDROID_HOME/ndk/$cpython_ndk_version"
+    url_prefix="https://github.com/beeware/cpython-android-source-deps/releases/download"
+    for name_ver in $libs; do
+        IFS=- read lib_name lib_ver <<< "$name_ver"
+        url="$url_prefix/$name_ver/$name_ver-$HOST.tar.gz"
+        echo "$url"
+
+        lib_dir="$script_dir/install/android/$abi/${lib_name}-${lib_ver}"
+        mkdir -p $lib_dir
+        lib_file=$downloads/${lib_name}-${lib_ver}-${abi}.tar.gz
+        curl -Lf "$url" -o $lib_file
+        tar -xf $lib_file -C $lib_dir
+        cp -R $lib_dir/* $PREFIX
+        echo "${lib_name}: $lib_ver" >> $support_versions
+    done
+
+    # Add sysroot paths, otherwise Python 3.8's setup.py will think libz is unavailable.
+    CFLAGS+=" -I$toolchain/sysroot/usr/include"
+    LDFLAGS+=" -L$toolchain/sysroot/usr/lib/$HOST/$api_level"
+
+    # The configure script omits -fPIC on Android, because it was unnecessary on older versions of
+    # the NDK (https://bugs.python.org/issue26851). But it's definitely necessary on the current
+    # version, otherwise we get linker errors like "Parser/myreadline.o: relocation R_386_GOTOFF
+    # against preemptible symbol PyOS_InputHook cannot be used when making a shared object".
+    export CCSHARED="-fPIC"
+
+    # Override some tests.
+    cd "$build_dir"
+    cat > config.site <<-EOF
+	# Things that can't be autodetected when cross-compiling.
+	ac_cv_aligned_required=no  # Default of "yes" changes hash function to FNV, which breaks Numba.
+	ac_cv_file__dev_ptmx=no
+	ac_cv_file__dev_ptc=no
+	EOF
+    export CONFIG_SITE=$(pwd)/config.site
+
+    configure_args="--host=$HOST --build=$(./config.guess) \
+    --enable-shared --without-ensurepip --with-openssl=$PREFIX"
+
+    # This prevents the "getaddrinfo bug" test, which can't be run when cross-compiling.
+    configure_args+=" --enable-ipv6"
+
+    # Some of the patches involve missing Makefile dependencies, which allowed extension
+    # modules to be built before libpython3.x.so in parallel builds. In case this happens
+    # again, make sure there's no libpython3.x.a, otherwise the modules may end up silently
+    # linking with that instead.
+    if [ $version_int -ge 310 ]; then
+        configure_args+=" --without-static-libpython"
     fi
-fi
 
-Android/android.py configure-build
-Android/android.py make-build
-Android/android.py configure-host "$HOST"
-Android/android.py make-host "$HOST"
-cp -a "cross-build/$HOST/prefix/"* "$PREFIX"
+    if [ $version_int -ge 311 ]; then
+        configure_args+=" --with-build-python=yes"
+    fi
+
+    ./configure $configure_args
+
+    make -j $CPU_COUNT
+    make install prefix=$PREFIX
+
+    echo ">>> Replacing host platform"
+    sed -i -e "s/_PYTHON_HOST_PLATFORM=.*/_PYTHON_HOST_PLATFORM=android-$api_level-$abi/" $PREFIX/lib/python$version_short/config-$version_short/Makefile
+else
+    case "$abi" in
+        arm64-v8a|x86_64)
+            ;;
+        *)
+            echo "Python $version_short official Android build supports only: arm64-v8a, x86_64"
+            exit 1
+            ;;
+    esac
+
+    # CPython's Android tooling expects ANDROID_HOME and ANDROID_API_LEVEL.
+    export ANDROID_API_LEVEL="$api_level"
+    if [ -z "${ANDROID_HOME:-}" ]; then
+        if [ -d "$HOME/Library/Android/sdk" ]; then
+            export ANDROID_HOME="$HOME/Library/Android/sdk"
+        elif [ -d "$HOME/Android/Sdk" ]; then
+            export ANDROID_HOME="$HOME/Android/Sdk"
+        else
+            export ANDROID_HOME="$script_dir/android-sdk"
+            mkdir -p "$ANDROID_HOME"
+        fi
+    fi
+
+    # Reuse already-installed NDK by exposing it at the location expected by
+    # CPython's Android/android-env.sh.
+    if [ -z "${NDK_HOME:-}" ] && [ -d "$HOME/ndk/r27d" ]; then
+        export NDK_HOME="$HOME/ndk/r27d"
+    fi
+    cpython_ndk_version=$(sed -n 's/^ndk_version=//p' Android/android-env.sh | head -n1)
+    if [ -n "${NDK_HOME:-}" ] && [ -d "$NDK_HOME" ] && [ -n "${cpython_ndk_version:-}" ]; then
+        mkdir -p "$ANDROID_HOME/ndk"
+        if [ ! -e "$ANDROID_HOME/ndk/$cpython_ndk_version" ]; then
+            ln -s "$NDK_HOME" "$ANDROID_HOME/ndk/$cpython_ndk_version"
+        fi
+    fi
+
+    Android/android.py configure-build
+    Android/android.py make-build
+    Android/android.py configure-host "$HOST"
+    Android/android.py make-host "$HOST"
+    cp -a "cross-build/$HOST/prefix/"* "$PREFIX"
+fi
