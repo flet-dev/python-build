@@ -79,7 +79,7 @@ jobs:
         shell: bash
         run: |
           echo "PYTHON_VERSION_SHORT=$(echo "$PYTHON_VERSION" | cut -d. -f1,2)" >> "$GITHUB_ENV"
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: python --version
@@ -113,6 +113,10 @@ jobs:
         shell: bash
         run: |
           echo "PYTHON_VERSION_SHORT=$(echo "$PYTHON_VERSION" | cut -d. -f1,2)" >> "$GITHUB_ENV"
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - run: python --version
       - working-directory: linux
         shell: bash
         run: |

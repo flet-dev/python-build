@@ -21,15 +21,15 @@ mkdir -p $PYTHON_ARCH/build
 tar zxvf $DIST_FILE -C $PYTHON_ARCH/build
 
 # compile lib
-build_python="$PYTHON_ARCH/build/python/bin/python$PYTHON_VERSION_SHORT"
-if [ ! -x "$build_python" ]; then
-    build_python="$PYTHON_ARCH/build/python/bin/python3"
+build_python=$(command -v "python$PYTHON_VERSION_SHORT" || true)
+if [ -z "$build_python" ]; then
+    build_python=$(command -v python3 || true)
 fi
-if [ ! -x "$build_python" ]; then
-    build_python="$PYTHON_ARCH/build/python/bin/python"
+if [ -z "$build_python" ]; then
+    build_python=$(command -v python || true)
 fi
-if [ ! -x "$build_python" ]; then
-    echo "Python interpreter not found in extracted runtime under $PYTHON_ARCH/build/python/bin"
+if [ -z "$build_python" ]; then
+    echo "Host Python interpreter not found for compileall"
     exit 1
 fi
 "$build_python" -I -m compileall -b "$PYTHON_ARCH/build/python/lib/python$PYTHON_VERSION_SHORT"
