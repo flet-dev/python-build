@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 env:
-  PYTHON_VERSION: 3.13.12
+  PYTHON_VERSION: 3.12.12
   PYTHON_DIST_RELEASE: 20260203 # https://github.com/astral-sh/python-build-standalone/releases
 
 jobs:
