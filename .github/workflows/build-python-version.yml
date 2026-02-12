@@ -1,4 +1,4 @@
-name: Build Python Packages (Reusable)
+name: Build Python Version
 
 on:
   workflow_call:
@@ -7,9 +7,19 @@ on:
         description: Full Python version (e.g. 3.13.12)
         required: true
         type: string
+  workflow_dispatch:
+    inputs:
+      python_version:
+        description: Full Python version (e.g. 3.13.12)
+        required: true
+        type: choice
+        options:
+          - 3.12.12
+          - 3.13.12
+          - 3.14.3
 
 env:
-  PYTHON_VERSION: ${{ inputs.python_version }}
+  PYTHON_VERSION: ${{ inputs.python_version || github.event.inputs.python_version }}
   PYTHON_DIST_RELEASE: 20260203 # https://github.com/astral-sh/python-build-standalone/releases
 
 jobs:

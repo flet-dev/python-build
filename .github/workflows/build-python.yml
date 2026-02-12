@@ -5,17 +5,6 @@ on:
     branches:
       - '**'
   workflow_dispatch:
-    inputs:
-      python_version:
-        description: 'Version to build (all, 3.12.12, 3.13.12, 3.14.3)'
-        required: true
-        default: all
-        type: choice
-        options:
-          - all
-          - 3.12.12
-          - 3.13.12
-          - 3.14.3
 
 jobs:
   build-matrix:
@@ -27,7 +16,6 @@ jobs:
           - 3.12.12
           - 3.13.12
           - 3.14.3
-    if: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.python_version == 'all' || github.event.inputs.python_version == matrix.python_version }}
     uses: ./.github/workflows/build-python-version.yml
     with:
       python_version: ${{ matrix.python_version }}
