@@ -21,7 +21,18 @@ mkdir -p $PYTHON_ARCH/build
 tar zxvf $DIST_FILE -C $PYTHON_ARCH/build
 
 # compile lib
-python -m compileall -b "$PYTHON_ARCH/build/python/lib/python$PYTHON_VERSION_SHORT"
+build_python="$PYTHON_ARCH/build/python/bin/python$PYTHON_VERSION_SHORT"
+if [ ! -x "$build_python" ]; then
+    build_python="$PYTHON_ARCH/build/python/bin/python3"
+fi
+if [ ! -x "$build_python" ]; then
+    build_python="$PYTHON_ARCH/build/python/bin/python"
+fi
+if [ ! -x "$build_python" ]; then
+    echo "Python interpreter not found in extracted runtime under $PYTHON_ARCH/build/python/bin"
+    exit 1
+fi
+"$build_python" -I -m compileall -b "$PYTHON_ARCH/build/python/lib/python$PYTHON_VERSION_SHORT"
 
 # copy build to dist
 mkdir -p $PYTHON_ARCH/dist
