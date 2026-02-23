@@ -1,5 +1,5 @@
-#!/bin/bash
-set -eu
+#!/usr/bin/env bash
+set -euo pipefail
 
 install_root=${1:?}
 python_version=${2:?}
@@ -7,9 +7,61 @@ abi=${3:?}
 
 script_dir=$(dirname $(realpath $0))
 
+. abi-to-host.sh
+
+if [ -z "${NDK_HOME:-}" ]; then
+    sdk_candidates=""
+    if [ -n "${ANDROID_HOME:-}" ]; then
+        sdk_candidates+="$ANDROID_HOME "
+    fi
+    if [ -d "$HOME/Library/Android/sdk" ]; then
+        sdk_candidates+="$HOME/Library/Android/sdk "
+    fi
+    if [ -d "$HOME/Android/Sdk" ]; then
+        sdk_candidates+="$HOME/Android/Sdk "
+    fi
+    if [ -d "$script_dir/android-sdk" ]; then
+        sdk_candidates+="$script_dir/android-sdk "
+    fi
+    if [ -d "$HOME/ndk" ]; then
+        ndk_candidate=$(ls -d "$HOME/ndk"/* 2>/dev/null | sort -V | tail -n1 || true)
+        if [ -n "$ndk_candidate" ]; then
+            NDK_HOME="$ndk_candidate"
+        fi
+    fi
+
+    for sdk_root in $sdk_candidates; do
+        if [ -n "${NDK_HOME:-}" ]; then
+            break
+        fi
+        ndk_candidate=$(ls -d "$sdk_root"/ndk/* 2>/dev/null | sort -V | tail -n1 || true)
+        if [ -n "$ndk_candidate" ]; then
+            NDK_HOME="$ndk_candidate"
+            break
+        fi
+    done
+fi
+
+if [ -z "${NDK_HOME:-}" ] || [ ! -d "$NDK_HOME" ]; then
+    echo "NDK_HOME is not set and no NDK was found in Android SDK locations."
+    exit 1
+fi
+
+toolchain=$(echo "$NDK_HOME"/toolchains/llvm/prebuilt/*)
+STRIP="$toolchain/bin/llvm-strip"
+if [ ! -x "$STRIP" ]; then
+    echo "llvm-strip not found at: $STRIP"
+    exit 1
+fi
+
 # build short Python version
 read python_version_major python_version_minor < <(echo $python_version | sed -E 's/^([0-9]+)\.([0-9]+).*/\1 \2/')
 python_version_short=$python_version_major.$python_version_minor
+python_bin=$(command -v "python$python_version_short" || true)
+if [ -z "$python_bin" ]; then
+    echo "python$python_version_short is required to compile stdlib bytecode"
+    exit 1
+fi
 
 # create build dir
 build_dir=build/python-$python_version/$abi
@@ -23,6 +75,10 @@ mkdir -p dist
 # copy files to build
 rsync -av --exclude-from=$script_dir/python-android-dart.exclude $install_root/android/$abi/python-$python_version/* $build_dir
 
+# strip binaries
+chmod u+w $(find $build_dir -name *.so)
+$STRIP $(find $build_dir -name *.so)
+
 # create libpythonbundle.so
 bundle_dir=$build_dir/libpythonbundle
 mkdir -p $bundle_dir
@@ -32,8 +88,8 @@ mv $build_dir/lib/python$python_version_short/lib-dynload $bundle_dir/modules
 
 # stdlib
 # stdlib_zip=$bundle_dir/stdlib.zip
+"$python_bin" -I -m compileall -b "$build_dir/lib/python$python_version_short"
 cd $build_dir/lib/python$python_version_short
-python -m compileall -b .
 find . \( -name '*.so' -or -name '*.py' -or -name '*.typed' \) -type f -delete
 rm -rf __pycache__
 rm -rf **/__pycache__
@@ -47,8 +103,14 @@ zip -r ../libpythonbundle.so .
 cd -
 rm -rf $bundle_dir
 
-# copy *.so from lib
-cp $build_dir/lib/*.so $build_dir
+# copy python*.so from lib
+cp $build_dir/lib/libpython$python_version_short.so $build_dir
+
+# copy deps
+for name in crypto ssl sqlite3; do
+    cp "$build_dir/lib/lib${name}_"python.so "$build_dir"
+done
+
 rm -rf $build_dir/lib
 
 # final archive

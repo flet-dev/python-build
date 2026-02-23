@@ -107,6 +107,7 @@ framework module Python {
     exclude header "pyconfig-x86_64.h"
     exclude header "pydtrace.h"
     exclude header "pyexpat.h"
+    exclude header "pyport.h"
     exclude header "structmember.h"
     exclude header "token.h"
 }

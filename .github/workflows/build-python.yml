@@ -1,0 +1,22 @@
+name: Build Python Packages
+
+on:
+  push:
+    branches:
+      - '**'
+  workflow_dispatch:
+
+jobs:
+  build-matrix:
+    name: Build Python ${{ matrix.python_version }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python_version:
+          - 3.12.12
+          - 3.13.12
+          - 3.14.3
+    uses: ./.github/workflows/build-python-version.yml
+    with:
+      python_version: ${{ matrix.python_version }}
+    secrets: inherit

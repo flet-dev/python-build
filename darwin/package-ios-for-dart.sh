@@ -1,5 +1,5 @@
-#!/bin/bash
-set -eu
+#!/usr/bin/env bash
+set -euo pipefail
 
 python_apple_support_root=${1:?}
 python_version=${2:?}
@@ -11,6 +11,11 @@ script_dir=$(dirname $(realpath $0))
 # build short Python version
 read python_version_major python_version_minor < <(echo $python_version | sed -E 's/^([0-9]+)\.([0-9]+).*/\1 \2/')
 python_version_short=$python_version_major.$python_version_minor
+python_bin=$(command -v "python$python_version_short" || true)
+if [ -z "$python_bin" ]; then
+    echo "python$python_version_short is required to compile stdlib bytecode"
+    exit 1
+fi
 
 # create build directory
 build_dir=build/python-$python_version
@@ -38,6 +43,10 @@ for arch in "${archs[@]}"; do
     rsync -av --exclude-from=$script_dir/python-darwin-stdlib.exclude $python_apple_support_root/install/iOS/$arch/python-*/lib/python$python_version_short/* $stdlib_dir/$arch
 done
 
+echo "Copying privacy manifests..."
+cp "$script_dir/PrivacyInfo.xcprivacy" "$stdlib_dir/${archs[0]}/lib-dynload/_hashlib.xcprivacy"
+cp "$script_dir/PrivacyInfo.xcprivacy" "$stdlib_dir/${archs[0]}/lib-dynload/_ssl.xcprivacy"
+
 echo "Converting lib-dynload to xcframeworks..."
 find "$stdlib_dir/${archs[0]}/lib-dynload" -name "*.$dylib_ext" | while read full_dylib; do
     dylib_relative_path=${full_dylib#$stdlib_dir/${archs[0]}/lib-dynload/}
@@ -46,7 +55,7 @@ find "$stdlib_dir/${archs[0]}/lib-dynload" -name "*.$dylib_ext" | while read ful
         "$stdlib_dir/${archs[1]}/lib-dynload" \
         "$stdlib_dir/${archs[2]}/lib-dynload" \
         $dylib_relative_path \
-        "Frameworks/serious_python_darwin.framework/python-stdlib/lib-dynload" \
+        "Frameworks/serious_python_darwin.framework/python.bundle/stdlib/lib-dynload" \
         $python_frameworks_dir
     #break # run for one lib only - for tests
 done
@@ -59,9 +68,9 @@ for arch in "${archs[@]}"; do
     rm -rf $stdlib_dir/$arch
 done
 
-# compile stdlib
+# compile stdlib with an isolated interpreter, without importing from target stdlib dir.
+"$python_bin" -I -m compileall -b "$stdlib_dir"
 cd $stdlib_dir
-python -m compileall -b .
 find . \( -name '*.so' -or -name "*.$dylib_ext" -or -name '*.py' -or -name '*.typed' \) -type f -delete
 rm -rf __pycache__
 rm -rf **/__pycache__

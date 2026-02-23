@@ -23,7 +23,7 @@ create_plist() {
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundlePackageType</key>
-	<string>APPL</string>
+	<string>FMWK</string>
 	<key>CFBundleShortVersionString</key>
 	<string>1.0</string>
 	<key>CFBundleSupportedPlatforms</key>
@@ -31,7 +31,7 @@ create_plist() {
 		<string>iPhoneOS</string>
 	</array>
 	<key>MinimumOSVersion</key>
-	<string>12.0</string>
+	<string>13.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
 </dict>
@@ -55,6 +55,10 @@ create_xcframework_from_dylibs() {
     dylib_without_ext=$(echo $dylib_relative_path | cut -d "." -f 1)
     framework=$(echo $dylib_without_ext | tr "/" ".")
     framework_identifier=${framework//_/-}
+    while [[ $framework_identifier == -* ]]; do
+        framework_identifier=${framework_identifier#-}
+    done
+    framework_identifier=${framework_identifier:-framework}
 
     # creating "iphoneos" framework
     fd=iphoneos/$framework.framework
@@ -64,6 +68,11 @@ create_xcframework_from_dylibs() {
     install_name_tool -id @rpath/$framework.framework/$framework $fd/$framework
     create_plist $framework "org.python.$framework_identifier" $fd/Info.plist
     echo "$origin_prefix/$dylib_without_ext.fwork" > $fd/$framework.origin
+
+    # copy privacy manifest if any
+    if [ -f "$iphone_dir/$dylib_without_ext.xcprivacy" ]; then
+        cp "$iphone_dir/$dylib_without_ext.xcprivacy" "$fd/PrivacyInfo.xcprivacy"
+    fi
 
     # creating "iphonesimulator" framework
     fd=iphonesimulator/$framework.framework
@@ -77,6 +86,11 @@ create_xcframework_from_dylibs() {
     install_name_tool -id @rpath/$framework.framework/$framework $fd/$framework
     create_plist $framework "org.python.$framework_identifier" $fd/Info.plist
     echo "$origin_prefix/$dylib_without_ext.fwork" > $fd/$framework.origin
+
+    # copy privacy manifest if any
+    if [ -f "$iphone_dir/$dylib_without_ext.xcprivacy" ]; then
+        mv "$iphone_dir/$dylib_without_ext.xcprivacy" "$fd/PrivacyInfo.xcprivacy"
+    fi
 
     # merge frameworks info xcframework
     xcodebuild -create-xcframework \
