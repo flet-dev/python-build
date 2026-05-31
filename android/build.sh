@@ -118,7 +118,7 @@ if [ $version_int -le 312 ]; then
     export CONFIG_SITE=$(pwd)/config.site
 
     configure_args="--host=$HOST --build=$(./config.guess) \
-    --enable-shared --without-ensurepip --with-openssl=$PREFIX"
+    --prefix=$PREFIX --enable-shared --without-ensurepip --with-openssl=$PREFIX"
 
     # This prevents the "getaddrinfo bug" test, which can't be run when cross-compiling.
     configure_args+=" --enable-ipv6"
@@ -184,3 +184,10 @@ else
     Android/android.py make-host "$HOST"
     cp -a "cross-build/$HOST/prefix/"* "$PREFIX"
 fi
+
+if [ -z "${toolchain:-}" ] && [ -n "${NDK_HOME:-}" ]; then
+    toolchain=$(echo "$NDK_HOME"/toolchains/llvm/prebuilt/*)
+fi
+
+python3 "$script_dir/normalize-mobile-forge-install.py" "$PREFIX" \
+    --ndk-toolchain "${toolchain:-}"
