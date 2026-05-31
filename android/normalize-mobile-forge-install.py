@@ -50,10 +50,6 @@ def _mobile_forge_relocate_sysconfig():
             _parts = _Path(_build_ndk).parts
             if "toolchains" in _parts:
                 _build_ndk_version = _parts[_parts.index("toolchains") - 1]
-        _android_sdk_versions = {{
-            "r27d": "27.2.12479018",
-            "r28c": "28.2.13676358",
-        }}
 
         def _emit(_path):
             if _path and _path not in _seen and _path.is_dir():
@@ -61,31 +57,28 @@ def _mobile_forge_relocate_sysconfig():
                 return _path
             return None
 
+        # 1. Explicit env overrides — highest priority.
         for _value in (_os.environ.get("NDK_HOME"), _os.environ.get("ANDROID_NDK_HOME")):
             _path = _emit(_Path(_value)) if _value else None
             if _path:
                 yield _path
 
+        # 2. Legacy `~/ndk/<build-time-letter>/` layout (e.g. ~/ndk/r27d/) —
+        # what older install scripts (incl. mobile-forge's pre-sdkmanager
+        # install_ndk.sh) used. Looked up by the build-time letter form
+        # baked into the toolchain path, so only fires when present.
         _home = _Path.home()
         if _build_ndk_version:
-            for _path in (
-                _home / "ndk" / _build_ndk_version,
-                _home
-                / "Library"
-                / "Android"
-                / "sdk"
-                / "ndk"
-                / _android_sdk_versions.get(_build_ndk_version, _build_ndk_version),
-                _home
-                / "Android"
-                / "Sdk"
-                / "ndk"
-                / _android_sdk_versions.get(_build_ndk_version, _build_ndk_version),
-            ):
-                _path = _emit(_path)
-                if _path:
-                    yield _path
+            _legacy = _home / "ndk" / _build_ndk_version
+            _path = _emit(_legacy)
+            if _path:
+                yield _path
 
+        # 3. Fallback — walk every known NDK root and yield each child,
+        # newest first. Any modern NDK can serve as a substitute (clang
+        # is forward-compatible at the API levels mobile-forge targets),
+        # so this is robust to letter/component-version drift without
+        # needing a hardcoded translation table.
         for _root in (
             _home / "ndk",
             _home / "Library" / "Android" / "sdk" / "ndk",
