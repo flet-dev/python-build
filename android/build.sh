@@ -189,5 +189,5 @@ if [ -z "${toolchain:-}" ] && [ -n "${NDK_HOME:-}" ]; then
     toolchain=$(echo "$NDK_HOME"/toolchains/llvm/prebuilt/*)
 fi
 
-python3 "$script_dir/normalize-mobile-forge-install.py" "$PREFIX" \
+python3 "$script_dir/normalize_mobile_forge_install.py" "$PREFIX" \
     --ndk-toolchain "${toolchain:-}"
