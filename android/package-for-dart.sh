@@ -76,8 +76,16 @@ mkdir -p dist
 rsync -av --exclude-from=$script_dir/python-android-dart.exclude $install_root/android/$abi/python-$python_version/* $build_dir
 
 # strip binaries
-chmod u+w $(find $build_dir -name *.so)
-$STRIP $(find $build_dir -name *.so)
+elfs=()
+while IFS= read -r so; do
+    if [ "$(od -An -N4 -tx1 "$so" | tr -d ' \n')" = "7f454c46" ]; then
+        chmod u+w "$so"
+        elfs+=("$so")
+    fi
+done < <(find "$build_dir" -name '*.so' -type f)
+if [ ${#elfs[@]} -gt 0 ]; then
+    "$STRIP" "${elfs[@]}"
+fi
 
 # create libpythonbundle.so
 bundle_dir=$build_dir/libpythonbundle
