@@ -4,10 +4,15 @@
 lib/python*/lib-dynload/_test*.so
 lib/python*/lib-dynload/_ctypes_test*.so
 lib/python*/lib-dynload/xxlimited*.so
+lib/python*/lib-dynload/xxsubtype*.so
 lib/python*/lib-dynload/_xxtestfuzz*.so
+# curses package is excluded below, so its C extensions are dead weight
+lib/python*/lib-dynload/_curses*.so
+lib/python*/lib-dynload/_curses_panel*.so
 lib/python*/curses
 lib/python*/ensurepip
 lib/python*/idlelib
+lib/python*/lib2to3
 lib/python*/pydoc_data
 lib/python*/test
 lib/python*/tkinter

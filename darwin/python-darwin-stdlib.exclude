@@ -1,12 +1,17 @@
 lib-dynload/_test*.so
 lib-dynload/_ctypes_test*.so
 lib-dynload/xxlimited*.so
+lib-dynload/xxsubtype*.so
 lib-dynload/_xxtestfuzz*.so
+# curses package is excluded below, so its C extensions are dead weight
+lib-dynload/_curses*.so
+lib-dynload/_curses_panel*.so
 config-*
 ctypes/macholib/fetch_macholib*
 curses
 ensurepip
 idlelib
+lib2to3
 pydoc_data
 site-packages
 test

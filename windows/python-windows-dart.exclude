@@ -18,6 +18,7 @@ DLLs/_test*.pyd
 DLLs/_ctypes_test*.pyd
 DLLs/_tkinter*.pyd
 DLLs/xxlimited*.pyd
+DLLs/xxsubtype*.pyd
 DLLs/tcl86t.dll
 DLLs/tk86t.dll
 DLLs/zlib1.dll
