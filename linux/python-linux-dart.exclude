@@ -18,6 +18,15 @@ lib/python*/test
 lib/python*/tkinter
 lib/python*/turtle*
 lib/python*/wsgiref
+# Interactive-REPL / dev-only modules + easter eggs / frozen demos (never imported when
+# running a script in embedded mode). Globs catch the .pyc too (sources go via *.py above).
+lib/python*/_pyrepl
+lib/python*/rlcompleter*
+lib/python*/tabnanny*
+lib/python*/antigravity*
+lib/python*/this*
+lib/python*/__hello__*
+lib/python*/__phello__
 lib/itcl*
 lib/tcl*
 lib/thread*

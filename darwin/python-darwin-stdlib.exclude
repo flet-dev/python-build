@@ -18,4 +18,13 @@ test
 tkinter
 turtle*
 wsgiref
+# Interactive-REPL / dev-only modules — never imported when running a script (embedded
+# mode); plus easter eggs and frozen demo modules.
+_pyrepl
+rlcompleter*
+tabnanny*
+antigravity*
+this*
+__hello__*
+__phello__
 */__pycache__
