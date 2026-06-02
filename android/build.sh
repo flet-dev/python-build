@@ -140,24 +140,6 @@ if [ $version_int -le 312 ]; then
     make -j $CPU_COUNT
     make install prefix=$PREFIX
 
-    # CPython's Makefile rule for libpython skips `-Wl,-soname` when
-    # INSTSONAME == LDLIBRARY, which is the case on Android (both are
-    # `libpython3.X.so`). The shipped libpython3.X.so therefore has no
-    # DT_SONAME, so consumer wheels record whichever name the linker
-    # was asked for in DT_NEEDED — e.g. a `-lpython3` resolved via a
-    # `libpython3.so` shim writes `libpython3.so` instead of the right
-    # `libpython3.X.so`. Patching the SONAME in here makes consumer
-    # DT_NEEDED entries correct regardless of how the link was reached.
-    # 3.13+ uses CPython's official Android tooling, which sets SONAME
-    # natively, so this branch only needs the post-install fix.
-    if command -v patchelf >/dev/null 2>&1; then
-        patchelf --set-soname "libpython$version_short.so" \
-            "$PREFIX/lib/libpython$version_short.so"
-    else
-        echo "WARNING: patchelf not installed; libpython$version_short.so will lack SONAME." >&2
-        echo "         Consumer wheels may end up with the wrong DT_NEEDED entry." >&2
-    fi
-
     echo ">>> Replacing host platform"
     sed -i -e "s/_PYTHON_HOST_PLATFORM=.*/_PYTHON_HOST_PLATFORM=android-$api_level-$abi/" $PREFIX/lib/python$version_short/config-$version_short/Makefile
 else
