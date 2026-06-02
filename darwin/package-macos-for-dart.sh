@@ -34,7 +34,9 @@ rsync -av --exclude-from=$script_dir/python-darwin-framework.exclude $python_app
 cp -r $script_dir/Modules $frameworks_dir/Python.xcframework/macos-arm64_x86_64/Python.framework
 mkdir -p $frameworks_dir/Python.xcframework/macos-arm64_x86_64/Python.framework/Headers
 cp -r $python_apple_support_root/support/$python_version_short/macOS/Python.xcframework/macos-arm64_x86_64/Python.framework/Versions/$python_version_short/include/python$python_version_short/* $frameworks_dir/Python.xcframework/macos-arm64_x86_64/Python.framework/Headers
-rm $frameworks_dir/Python.xcframework/macos-arm64_x86_64/Python.framework/Headers/module.modulemap
+# The built-in modulemap (if the source framework shipped one) is replaced by the
+# overlaid darwin/Modules/module.modulemap above; -f tolerates builds without one.
+rm -f $frameworks_dir/Python.xcframework/macos-arm64_x86_64/Python.framework/Headers/module.modulemap
 
 # copy stdlibs
 rsync -av --exclude-from=$script_dir/python-darwin-stdlib.exclude $python_apple_support_root/install/macOS/macosx/python-*/Python.framework/Versions/Current/lib/python$python_version_short/* $stdlib_dir

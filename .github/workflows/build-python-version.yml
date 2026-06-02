@@ -14,18 +14,21 @@ on:
         required: true
         type: choice
         options:
-          - 3.12.12
-          - 3.13.12
-          - 3.14.3
+          - 3.12.13
+          - 3.13.13
+          - 3.14.5
 
 env:
   PYTHON_VERSION: ${{ inputs.python_version || github.event.inputs.python_version }}
-  PYTHON_DIST_RELEASE: 20260203 # https://github.com/astral-sh/python-build-standalone/releases
+  # Optional override: pin a specific python-build-standalone release date
+  # (https://github.com/astral-sh/python-build-standalone/releases). When empty,
+  # linux/package-for-linux.sh auto-resolves the newest release for PYTHON_VERSION.
+  PYTHON_DIST_RELEASE: ""
 
 jobs:
   build-darwin:
     name: Build Python for iOS and macOS
-    runs-on: macos-15
+    runs-on: macos-26
     permissions:
       contents: write
 
@@ -49,17 +52,21 @@ jobs:
         working-directory: darwin
         shell: bash
         run: |
-          git clone --branch="$PYTHON_VERSION_SHORT" https://github.com/beeware/Python-Apple-support.git
           mkdir -p dist
 
-          pushd Python-Apple-support
-          make iOS
-          tar -czf ../dist/python-ios-mobile-forge-$PYTHON_VERSION_SHORT.tar.gz install support -C .
-          make macOS
-          popd
+          # iOS: 3.14+ uses CPython's in-tree Apple tooling, 3.13 builds from source per
+          # iOS/README.rst, 3.12 uses beeware. Emits normalized ./install + ./support.
+          python build_ios.py "$PYTHON_VERSION"
 
-          bash ./package-ios-for-dart.sh Python-Apple-support "$PYTHON_VERSION_SHORT"
-          bash ./package-macos-for-dart.sh Python-Apple-support "$PYTHON_VERSION_SHORT"
+          # mobile-forge artifact: iOS-only install+support tree (same structure as before).
+          # Captured before the macOS build also writes into ./support / ./install.
+          tar -czf dist/python-ios-mobile-forge-$PYTHON_VERSION_SHORT.tar.gz install support
+
+          # macOS: universal2 framework built from source (all versions).
+          python build_macos.py "$PYTHON_VERSION"
+
+          bash ./package-ios-for-dart.sh . "$PYTHON_VERSION_SHORT"
+          bash ./package-macos-for-dart.sh . "$PYTHON_VERSION_SHORT"
 
       - name: Upload Darwin build artifacts
         uses: actions/upload-artifact@v4
@@ -124,6 +131,9 @@ jobs:
       - run: python --version
       - working-directory: linux
         shell: bash
+        env:
+          # Lets resolve_pbs.py authenticate to the GitHub API and avoid rate limits.
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           bash ./package-for-linux.sh x86_64 "_v2"
           bash ./package-for-linux.sh aarch64 ""
@@ -169,6 +179,9 @@ jobs:
   publish-release:
     name: Publish Release Assets
     runs-on: ubuntu-latest
+    # Only publish GitHub release assets from the main branch; other branches still
+    # build (and upload per-job artifacts) but don't touch releases.
+    if: github.ref == 'refs/heads/main'
     needs:
       - build-darwin
       - build-android

@@ -11,6 +11,8 @@ ios-arm64_x86_64-simulator/Python.framework/Headers/module.modulemap
 macos-arm64_x86_64/Python.framework/Headers
 macos-arm64_x86_64/Python.framework/Versions/*/_CodeSignature
 macos-arm64_x86_64/Python.framework/Versions/*/Headers
+macos-arm64_x86_64/Python.framework/Versions/*/bin
+macos-arm64_x86_64/Python.framework/Versions/*/share
 macos-arm64_x86_64/Python.framework/Versions/*/include
 macos-arm64_x86_64/Python.framework/Versions/*/lib/itcl*
 macos-arm64_x86_64/Python.framework/Versions/*/lib/libform*
