@@ -121,6 +121,13 @@ def build(version: str, short: str, minor: int, root: Path, downloads: Path,
     reshape(version, short, src, root)
 
 
+def _strip(paths: list) -> None:
+    """`strip -x` the given Mach-O files (removes local symbols, keeps exported ones)."""
+    files = [str(p) for p in paths if p.is_file() and not p.is_symlink()]
+    if files:
+        run(["strip", "-x", *files])
+
+
 def _embed_ios_version_in_host_triple(sysconfig_path: Path) -> None:
     """Rewrite HOST_GNU_TYPE in a _sysconfigdata file to embed IPHONEOS_DEPLOYMENT_TARGET
     (e.g. ``aarch64-apple-ios`` -> ``aarch64-apple-ios13.0``,
@@ -197,6 +204,14 @@ def reshape(version: str, short: str, src: Path, root: Path) -> None:
         shutil.copytree(arch_dir / "lib-dynload", dst / "lib-dynload", symlinks=True)
         for sysconfig in arch_dir.glob("_sysconfigdata*.py"):
             shutil.copyfile(sysconfig, dst / sysconfig.name)
+        # The Apple tool leaves the iOS binaries unstripped; strip local symbols (keeps the
+        # exported PyInit_/C-API symbols needed for dynamic linking). These .so become the
+        # per-module python-xcframeworks; Xcode re-signs them when embedding into the app.
+        _strip([*(dst / "lib-dynload").glob("*.so")])
+
+    # Strip the per-slice framework binary too (the libpython that ships in the xcframework).
+    _strip([dst_xcf / sl / "Python.framework" / "Python"
+            for sl in {s for s, _ in XCF_SLICE_FOR_TARGET.values()}])
 
     deps = reshape_mobile_forge(version, short, cross, dst_xcf, root)
 
