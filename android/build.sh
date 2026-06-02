@@ -51,7 +51,11 @@ if [ $version_int -le 312 ]; then
     patches+=" soname"
 fi
 if [ $version_int -eq 312 ]; then
-    patches+=" bldlibrary grp"
+    # soname_linktime: makes CPython's Makefile rule emit -Wl,-soname even
+    # when INSTSONAME == LDLIBRARY (the Android case), so the shipped
+    # libpython3.X.so carries DT_SONAME. 3.13+ already gets this from its official
+    # Android tooling; this 3.12-only patch matches that behavior at link time.
+    patches+=" soname_linktime bldlibrary grp"
 fi
 for name in $patches; do
     patch_file="$script_dir/patches/$name.patch"
