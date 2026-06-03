@@ -127,6 +127,39 @@ del _mobile_forge_relocate_sysconfig
     path.write_text(text + block)
 
 
+def rewrite_build_details_json(prefix: Path) -> None:
+    """Re-anchor absolute paths in ``build-details.json`` (Python 3.14+).
+
+    CPython's official Android tooling emits ``lib/python<X.Y>/build-details.json``
+    with build-time absolute paths under ``/usr/local`` (and sometimes under the
+    CI's checkout root). Consumers like ``maturin`` read this JSON to drive
+    cross-compilation — including the ``libpython.dynamic`` /
+    ``libpython.dynamic_stableabi`` paths that the linker is told to follow.
+    Without rewriting, ``maturin`` happily wires
+    ``/usr/local/lib/libpython3.14.so`` into the consumer's link line, which
+    fails on every machine where ``/usr/local/lib`` doesn't contain the
+    Android-built libpython.
+
+    We do this as a static one-shot rewrite at install time, mirroring the
+    runtime relocation block we append to sysconfigdata. Idempotent because
+    once paths have been re-anchored at ``str(prefix)`` they don't match the
+    build-time pattern any more.
+    """
+    candidates = sorted(prefix.glob("lib/python*/build-details.json"))
+    if not candidates:
+        return
+    prefix_str = str(prefix)
+    # CPython's Android tooling roots its install under /usr/local. Older
+    # versions of this script may also have left _build_prefix references in
+    # neighboring files; we don't need a second prefix here because everything
+    # build-details.json currently emits sits under /usr/local.
+    for path in candidates:
+        text = path.read_text()
+        new_text = text.replace("/usr/local", prefix_str)
+        if new_text != text:
+            path.write_text(new_text)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("prefix", type=Path)
@@ -136,6 +169,7 @@ def main() -> None:
     prefix = args.prefix.resolve()
     for sysconfigdata in find_sysconfigdata(prefix):
         append_relocation_block(sysconfigdata, prefix, args.ndk_toolchain)
+    rewrite_build_details_json(prefix)
     replace_libpython_stub(prefix)
 
 
