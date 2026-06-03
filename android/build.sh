@@ -192,6 +192,17 @@ fi
 if [ -z "${toolchain:-}" ] && [ -n "${NDK_HOME:-}" ]; then
     toolchain=$(echo "$NDK_HOME"/toolchains/llvm/prebuilt/*)
 fi
+# 3.13+: CPython's in-tree Android tooling auto-resolves the NDK under
+# $ANDROID_HOME/ndk/$cpython_ndk_version/ without ever exporting NDK_HOME,
+# so neither of the branches above fires. Walk that path so normalize sees
+# a non-empty build-time toolchain and the relocation block can substitute
+# on consumer hosts.
+if [ -z "${toolchain:-}" ] && [ -n "${ANDROID_HOME:-}" ] && [ -n "${cpython_ndk_version:-}" ]; then
+    candidate="$ANDROID_HOME/ndk/$cpython_ndk_version/toolchains/llvm/prebuilt"
+    if [ -d "$candidate" ]; then
+        toolchain=$(echo "$candidate"/*)
+    fi
+fi
 
 python3 "$script_dir/normalize_mobile_forge_install.py" "$PREFIX" \
     --ndk-toolchain "${toolchain:-}"
