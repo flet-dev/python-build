@@ -2,9 +2,13 @@ name: Build Python Packages
 
 on:
   push:
-    branches:
-      - '**'
+  pull_request:
   workflow_dispatch:
+
+# Cancel in-flight runs when a newer commit lands on the same ref.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-matrix:
