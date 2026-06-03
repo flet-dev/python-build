@@ -201,7 +201,6 @@ jobs:
       - build-android
       - build-linux
       - build-windows
-    if: github.ref == 'refs/heads/main'
     permissions:
       contents: write
     steps:
