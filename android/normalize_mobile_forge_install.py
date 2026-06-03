@@ -25,6 +25,7 @@ mobile-forge / serious_python (how they consume it).
 from __future__ import annotations
 
 import argparse
+import json
 import os
 from pathlib import Path
 
@@ -241,32 +242,45 @@ del _mobile_forge_relocate_sysconfig
 def rewrite_build_details_json(prefix: Path) -> None:
     """Re-anchor absolute paths in ``build-details.json`` (Python 3.14+).
 
-    CPython's official Android tooling emits ``lib/python<X.Y>/build-details.json``
-    with build-time absolute paths under ``/usr/local`` (and sometimes under the
-    CI's checkout root). Consumers like ``maturin`` read this JSON to drive
-    cross-compilation — including the ``libpython.dynamic`` /
-    ``libpython.dynamic_stableabi`` paths that the linker is told to follow.
-    Without rewriting, ``maturin`` happily wires
-    ``/usr/local/lib/libpython3.14.so`` into the consumer's link line, which
-    fails on every machine where ``/usr/local/lib`` doesn't contain the
-    Android-built libpython.
+    CPython's official Android tooling (used on the 3.13+ build path) emits
+    ``lib/python<X.Y>/build-details.json`` alongside the per-version
+    sysconfigdata. Consumers like ``maturin`` read this JSON for
+    cross-compilation — most notably the ``libpython.dynamic`` /
+    ``libpython.dynamic_stableabi`` paths, which become the ``-L`` argument
+    to the consumer's linker. Every absolute path in the file points at
+    python-build CI's build-time install root (currently ``/usr/local``,
+    but read from the JSON so we don't bake an assumption); on every
+    consumer machine that path is empty, so the linker fails with
+    ``unable to find library -lpython3`` and the build dies.
 
-    We do this as a static one-shot rewrite at install time, mirroring the
-    runtime relocation block we append to sysconfigdata. Idempotent because
-    once paths have been re-anchored at ``str(prefix)`` they don't match the
-    build-time pattern any more.
+    Re-anchor each absolute path field by replacing the build-time prefix
+    (read from ``base_prefix`` in the JSON itself) with the on-disk install
+    prefix. Reading the substitution source out of the file rather than
+    hard-coding ``/usr/local`` matches the narrow-prefix discipline the
+    sysconfig relocator follows: an upstream CPython change that moves the
+    Android tooling's install root won't silently miss the rewrite, and
+    nothing else under the install prefix's namespace can be accidentally
+    rewritten (e.g. a future ``c_api.headers`` value that happens to live
+    under a path sharing a prefix substring with an unrelated tree).
+
+    Idempotent: once ``base_prefix`` has been re-anchored at ``str(prefix)``,
+    the build-time pattern no longer appears in the JSON and re-running the
+    substitution is a no-op.
     """
     candidates = sorted(prefix.glob("lib/python*/build-details.json"))
     if not candidates:
         return
     prefix_str = str(prefix)
-    # CPython's Android tooling roots its install under /usr/local. Older
-    # versions of this script may also have left _build_prefix references in
-    # neighboring files; we don't need a second prefix here because everything
-    # build-details.json currently emits sits under /usr/local.
     for path in candidates:
+        data = json.loads(path.read_text())
+        build_time_prefix = data.get("base_prefix")
+        if not build_time_prefix or build_time_prefix == prefix_str:
+            # Either the file has no `base_prefix` to anchor on (unexpected
+            # for a CPython-emitted build-details.json) or we already
+            # rewrote this file in a prior pass — either way, nothing to do.
+            continue
         text = path.read_text()
-        new_text = text.replace("/usr/local", prefix_str)
+        new_text = text.replace(build_time_prefix, prefix_str)
         if new_text != text:
             path.write_text(new_text)
 
