@@ -144,7 +144,7 @@ def append_relocation_block(
 
 {marker}
 def _mobile_forge_relocate_sysconfig():
-    # Runs once at sysconfigdata import time on the consumer host. Rewrites every path 
+    # Runs once at sysconfigdata import time on the consumer host. Rewrites every path
     # string baked into `build_time_vars` (CC, LDSHARED, LIBDIR, etc.) from python-build
     # CI's filesystem layout to the consumer's.
     import os as _os

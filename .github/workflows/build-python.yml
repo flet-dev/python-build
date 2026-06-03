@@ -5,9 +5,9 @@ on:
   pull_request:
   workflow_dispatch:
 
-# Cancel in-flight runs when a newer commit lands on the same ref.
+# Cancel in-flight runs when a newer event arrives for the same logical branch.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:

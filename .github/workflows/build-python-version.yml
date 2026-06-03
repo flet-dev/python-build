@@ -23,7 +23,7 @@ env:
   PYTHON_DIST_RELEASE: 20260203 # https://github.com/astral-sh/python-build-standalone/releases
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build-darwin:
@@ -189,6 +189,8 @@ jobs:
       - build-linux
       - build-windows
     if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
     steps:
       - name: Derive short Python version
         shell: bash

@@ -50,7 +50,7 @@ def requires_python(*versions: str):
     return unittest.skipUnless(
         PYTHON_VERSION_SHORT in versions,
         f"requires PYTHON_VERSION_SHORT in {versions} "
-        f"(got MOBILE_FORGE_PYTHON_VERSION_SHORT={PYTHON_VERSION_SHORT or '<unset>'!r})",
+        f"(got PYTHON_VERSION_SHORT={PYTHON_VERSION_SHORT or '<unset>'!r})",
     )
 
 
