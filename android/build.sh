@@ -51,7 +51,11 @@ if [ $version_int -le 312 ]; then
     patches+=" soname"
 fi
 if [ $version_int -eq 312 ]; then
-    patches+=" bldlibrary grp"
+    # soname_linktime: makes CPython's Makefile rule emit -Wl,-soname even
+    # when INSTSONAME == LDLIBRARY (the Android case), so the shipped
+    # libpython3.X.so carries DT_SONAME. 3.13+ already gets this from its official
+    # Android tooling; this 3.12-only patch matches that behavior at link time.
+    patches+=" soname_linktime bldlibrary grp"
 fi
 for name in $patches; do
     patch_file="$script_dir/patches/$name.patch"
@@ -140,24 +144,6 @@ if [ $version_int -le 312 ]; then
     make -j $CPU_COUNT
     make install prefix=$PREFIX
 
-    # CPython's Makefile rule for libpython skips `-Wl,-soname` when
-    # INSTSONAME == LDLIBRARY, which is the case on Android (both are
-    # `libpython3.X.so`). The shipped libpython3.X.so therefore has no
-    # DT_SONAME, so consumer wheels record whichever name the linker
-    # was asked for in DT_NEEDED — e.g. a `-lpython3` resolved via a
-    # `libpython3.so` shim writes `libpython3.so` instead of the right
-    # `libpython3.X.so`. Patching the SONAME in here makes consumer
-    # DT_NEEDED entries correct regardless of how the link was reached.
-    # 3.13+ uses CPython's official Android tooling, which sets SONAME
-    # natively, so this branch only needs the post-install fix.
-    if command -v patchelf >/dev/null 2>&1; then
-        patchelf --set-soname "libpython$version_short.so" \
-            "$PREFIX/lib/libpython$version_short.so"
-    else
-        echo "WARNING: patchelf not installed; libpython$version_short.so will lack SONAME." >&2
-        echo "         Consumer wheels may end up with the wrong DT_NEEDED entry." >&2
-    fi
-
     echo ">>> Replacing host platform"
     sed -i -e "s/_PYTHON_HOST_PLATFORM=.*/_PYTHON_HOST_PLATFORM=android-$api_level-$abi/" $PREFIX/lib/python$version_short/config-$version_short/Makefile
 else
@@ -205,6 +191,17 @@ fi
 
 if [ -z "${toolchain:-}" ] && [ -n "${NDK_HOME:-}" ]; then
     toolchain=$(echo "$NDK_HOME"/toolchains/llvm/prebuilt/*)
+fi
+# 3.13+: CPython's in-tree Android tooling auto-resolves the NDK under
+# $ANDROID_HOME/ndk/$cpython_ndk_version/ without ever exporting NDK_HOME,
+# so neither of the branches above fires. Walk that path so normalize sees
+# a non-empty build-time toolchain and the relocation block can substitute
+# on consumer hosts.
+if [ -z "${toolchain:-}" ] && [ -n "${ANDROID_HOME:-}" ] && [ -n "${cpython_ndk_version:-}" ]; then
+    candidate="$ANDROID_HOME/ndk/$cpython_ndk_version/toolchains/llvm/prebuilt"
+    if [ -d "$candidate" ]; then
+        toolchain=$(echo "$candidate"/*)
+    fi
 fi
 
 python3 "$script_dir/normalize_mobile_forge_install.py" "$PREFIX" \

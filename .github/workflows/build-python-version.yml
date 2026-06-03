@@ -90,11 +90,6 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: python --version
-      - name: Install build deps
-        # patchelf is used by android/build.sh (3.12 path) to set SONAME
-        # on libpython3.X.so, which CPython's Makefile rule otherwise
-        # skips when LDLIBRARY==INSTSONAME (the Android case).
-        run: sudo apt-get update && sudo apt-get install -y patchelf
       - working-directory: android
         shell: bash
         run: |

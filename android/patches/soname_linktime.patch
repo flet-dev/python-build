@@ -1,0 +1,25 @@
+CPython 3.12's libpython link rule only passes -Wl,-soname when
+INSTSONAME != LDLIBRARY. On Android both equal "libpython3.X.so", so
+the else branch runs and the shipped libpython has no DT_SONAME.
+Consumer wheels' DT_NEEDED then records whatever name the linker saw
+(e.g. "libpython3.so" via a shim), and the device fails to dlopen at
+runtime.
+
+Adding -Wl,-h$(INSTSONAME) to the else branch makes ld stamp the
+SONAME during the actual link — same shape of fix as CPython 3.13's
+official Android tooling. Avoids needing a post-process patchelf step
+(which on NDK r27d interacts badly with llvm-strip and produces a
+PT_LOAD whose p_offset and p_vaddr violate the ELF spec's
+`p_offset ≡ p_vaddr (mod p_align)` requirement, breaking dlopen on
+strict bionic and crashing Py_Initialize on permissive bionic).
+
+--- a/Makefile.pre.in
++++ b/Makefile.pre.in
+@@ -819,5 +819,5 @@ libpython$(LDVERSION).so: $(LIBRARY_OBJS) $(DTRACE_OBJS)
+ 		$(BLDSHARED) -Wl,-h$(INSTSONAME) -o $(INSTSONAME) $(LIBRARY_OBJS) $(MODLIBS) $(SHLIBS) $(LIBC) $(LIBM); \
+ 		$(LN) -f $(INSTSONAME) $@; \
+ 	else \
+-		$(BLDSHARED) -o $@ $(LIBRARY_OBJS) $(MODLIBS) $(SHLIBS) $(LIBC) $(LIBM); \
++		$(BLDSHARED) -Wl,-h$(INSTSONAME) -o $@ $(LIBRARY_OBJS) $(MODLIBS) $(SHLIBS) $(LIBC) $(LIBM); \
+ 	fi
+
