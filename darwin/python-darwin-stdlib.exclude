@@ -1,16 +1,30 @@
 lib-dynload/_test*.so
 lib-dynload/_ctypes_test*.so
 lib-dynload/xxlimited*.so
+lib-dynload/xxsubtype*.so
 lib-dynload/_xxtestfuzz*.so
+# curses package is excluded below, so its C extensions are dead weight
+lib-dynload/_curses*.so
+lib-dynload/_curses_panel*.so
 config-*
 ctypes/macholib/fetch_macholib*
 curses
 ensurepip
 idlelib
+lib2to3
 pydoc_data
 site-packages
 test
 tkinter
 turtle*
 wsgiref
+# Interactive-REPL / dev-only modules — never imported when running a script (embedded
+# mode); plus easter eggs and frozen demo modules.
+_pyrepl
+rlcompleter*
+tabnanny*
+antigravity*
+this*
+__hello__*
+__phello__
 */__pycache__

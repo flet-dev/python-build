@@ -12,12 +12,21 @@ Lib/lib2to3
 Lib/site-packages/pip*
 Lib/site-packages/setuptools*
 Lib/site-packages/wheel*
+# Interactive-REPL / dev-only modules + easter eggs / frozen demos.
+Lib/_pyrepl
+Lib/rlcompleter.py
+Lib/tabnanny.py
+Lib/antigravity.py
+Lib/this.py
+Lib/__hello__.py
+Lib/__phello__
 
 # Optional/test/GUI extension modules and DLLs.
 DLLs/_test*.pyd
 DLLs/_ctypes_test*.pyd
 DLLs/_tkinter*.pyd
 DLLs/xxlimited*.pyd
+DLLs/xxsubtype*.pyd
 DLLs/tcl86t.dll
 DLLs/tk86t.dll
 DLLs/zlib1.dll

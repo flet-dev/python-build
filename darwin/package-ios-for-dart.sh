@@ -35,6 +35,12 @@ mkdir -p $stdlib_dir
 
 # copy Python.xcframework
 rsync -av --exclude-from=$script_dir/python-darwin-framework.exclude $python_apple_support_root/support/$python_version_short/iOS/Python.xcframework $frameworks_dir
+# Drop the full, un-pruned stdlib carried at the xcframework root (incl. the CPython test
+# suite, ~200 MB). serious_python loads the stdlib from python-stdlib/ and C extensions from
+# python-xcframeworks/*.fwork, so this copy is dead weight in shipped apps. (Done here rather
+# than via the shared rsync exclude, which is also used for macOS where a `lib` pattern would
+# wrongly drop the bundled OpenSSL under Versions/*/lib.)
+rm -rf $frameworks_dir/Python.xcframework/lib
 cp -r $script_dir/Modules $frameworks_dir/Python.xcframework/ios-arm64/Python.framework
 cp -r $script_dir/Modules $frameworks_dir/Python.xcframework/ios-arm64_x86_64-simulator/Python.framework
 

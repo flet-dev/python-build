@@ -1,0 +1,6 @@
+/x86_64
+/aarch64
+/cpython-*.tar.gz
+/python-linux-dart-*.tar.gz
+__pycache__/
+.DS_Store

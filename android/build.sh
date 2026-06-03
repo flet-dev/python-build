@@ -187,6 +187,18 @@ else
     Android/android.py configure-host "$HOST"
     Android/android.py make-host "$HOST"
     cp -a "cross-build/$HOST/prefix/"* "$PREFIX"
+
+    # CPython's official Android tooling builds OpenSSL/bzip2/libffi/xz/sqlite
+    # alongside Python and dumps them intermixed into $PREFIX/{include,lib}/.
+    # mobile-forge's make_dep_wheels.py expects each as a sibling per-lib
+    # install dir with its own {include,lib}/ so it can produce
+    # <lib>-<ver>-<N>-py3-none-android_*.whl wheels that satisfy recipe host
+    # requirements (e.g. cryptography's `openssl>=3.0.12`). Reorganize so the
+    # 3.13+ install layout matches the 3.12 contract.
+    python3 "$script_dir/extract_mobile_forge_deps.py" "$PREFIX" \
+        --abi "$abi" \
+        --version-short "$version_short" \
+        --support-root "$script_dir"
 fi
 
 if [ -z "${toolchain:-}" ] && [ -n "${NDK_HOME:-}" ]; then

@@ -2,4 +2,9 @@
 /Python-Apple-support
 /dist
 /build
+/install
+/support
+/downloads
+/deps
+__pycache__/
 .DS_Store
