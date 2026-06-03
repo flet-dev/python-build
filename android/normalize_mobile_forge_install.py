@@ -107,10 +107,17 @@ def _mobile_forge_relocate_sysconfig():
     for _key, _value in tuple(build_time_vars.items()):
         if not isinstance(_value, str):
             continue
-        for _old_prefix in _install_prefixes:
-            _value = _value.replace(_old_prefix, _prefix)
+        # NDK substitution must run before install-prefix substitution: when
+        # the build-time NDK lives under one of `_install_prefixes` (e.g. the
+        # GitHub runner places NDK under `/usr/local/lib/android/sdk/ndk/...`),
+        # rewriting the prefix first would mangle the NDK string and leave
+        # nothing for the NDK rule to match. Swapping order keeps both rules
+        # independent: NDK fully resolves to the local toolchain, then any
+        # remaining install-prefix references get re-anchored.
         if _build_ndk and _local_ndk:
             _value = _value.replace(_build_ndk, _local_ndk)
+        for _old_prefix in _install_prefixes:
+            _value = _value.replace(_old_prefix, _prefix)
         build_time_vars[_key] = _value
 
 
