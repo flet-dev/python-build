@@ -22,16 +22,17 @@ env:
   PYTHON_VERSION: ${{ inputs.python_version || github.event.inputs.python_version }}
   PYTHON_DIST_RELEASE: 20260203 # https://github.com/astral-sh/python-build-standalone/releases
 
+permissions:
+  contents: read
+
 jobs:
   build-darwin:
     name: Build Python for iOS and macOS
     runs-on: macos-15
-    permissions:
-      contents: write
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
       - name: Derive short Python version
         shell: bash
         run: |
@@ -41,9 +42,6 @@ jobs:
         uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION_SHORT }}
-
-      - name: Show Python version
-        run: python --version
 
       - name: Build Python for iOS and macOS
         working-directory: darwin
@@ -71,18 +69,27 @@ jobs:
   build-android:
     name: Build Python for Android
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Derive short Python version
         shell: bash
         run: |
           echo "PYTHON_VERSION_SHORT=$(echo "$PYTHON_VERSION" | cut -d. -f1,2)" >> "$GITHUB_ENV"
-      - uses: actions/setup-python@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      - run: python --version
+
+      - name: Run pre-build tests
+        shell: bash
+        env:
+          PYTHON_VERSION_SHORT: ${{ env.PYTHON_VERSION_SHORT }}
+          MOBILE_FORGE_TEST_PHASE: pre_build
+        run: python3 -m unittest discover -s android/tests -t android/tests -v
+
       - working-directory: android
         shell: bash
         run: |
@@ -96,7 +103,17 @@ jobs:
           if [ $version_int -lt 313 ]; then
             bash ./package-for-dart.sh install "$PYTHON_VERSION" armeabi-v7a
           fi
-      - uses: actions/upload-artifact@v4
+
+      - name: Run post-build tests
+        shell: bash
+        env:
+          PYTHON_VERSION_SHORT: ${{ env.PYTHON_VERSION_SHORT }}
+          MOBILE_FORGE_TEST_PHASE: post_build
+          MOBILE_FORGE_INSTALL_TREE: ${{ github.workspace }}/android/install
+        run: python3 -m unittest discover -s android/tests -t android/tests -v
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
         with:
           name: python-android-${{ env.PYTHON_VERSION_SHORT }}
           path: android/dist/python-android-*.tar.gz
@@ -105,24 +122,28 @@ jobs:
   build-linux:
     name: Build Python for Linux
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Derive short Python version
         shell: bash
         run: |
           echo "PYTHON_VERSION_SHORT=$(echo "$PYTHON_VERSION" | cut -d. -f1,2)" >> "$GITHUB_ENV"
-      - uses: actions/setup-python@v6
+
+      - name: Setup Python
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION }}
-      - run: python --version
+
       - working-directory: linux
         shell: bash
         run: |
           bash ./package-for-linux.sh x86_64 "_v2"
           bash ./package-for-linux.sh aarch64 ""
-      - uses: actions/upload-artifact@v4
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
         with:
           name: python-linux-${{ env.PYTHON_VERSION_SHORT }}
           path: linux/python-linux-dart-*.tar.gz
@@ -131,31 +152,29 @@ jobs:
   build-windows:
     name: Build Python for Windows
     runs-on: windows-2022
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
+
       - name: Derive short Python version
         shell: pwsh
         run: |
           $parts = "${{ env.PYTHON_VERSION }}".Split(".")
           "PYTHON_VERSION_SHORT=$($parts[0]).$($parts[1])" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Setup Python
         uses: actions/setup-python@v6
         with:
           python-version: ${{ env.PYTHON_VERSION_SHORT }}
-      - name: Show Python version
-        shell: pwsh
-        run: |
-          python --version
-          python -c "import sys; print(sys.executable)"
+
       - name: Build CPython from sources and package for Dart
         shell: pwsh
         run: |
           .\windows\package-for-dart.ps1 `
             -PythonVersion "${{ env.PYTHON_VERSION }}" `
             -PythonVersionShort "${{ env.PYTHON_VERSION_SHORT }}"
-      - uses: actions/upload-artifact@v4
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
         with:
           name: python-windows-${{ env.PYTHON_VERSION_SHORT }}
           path: windows/python-windows-for-dart-*.zip
@@ -169,6 +188,7 @@ jobs:
       - build-android
       - build-linux
       - build-windows
+    if: github.ref == 'refs/heads/main'
     permissions:
       contents: write
     steps:
@@ -176,6 +196,7 @@ jobs:
         shell: bash
         run: |
           echo "PYTHON_VERSION_SHORT=$(echo "$PYTHON_VERSION" | cut -d. -f1,2)" >> "$GITHUB_ENV"
+
       - name: Download all build artifacts
         uses: actions/download-artifact@v4
         with:
