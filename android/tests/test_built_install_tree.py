@@ -21,7 +21,14 @@ from _testlib import post_build, INSTALL_TREE, PYTHON_VERSION_SHORT
 
 def _sysconfigdata_files(install_root: Path):
     """Yield (abi, sysconfigdata path) for every ABI present under
-    `install_root/android/<abi>/python-X.Y.Z/lib/pythonX.Y/_sysconfigdata__linux_.py`.
+    `install_root/android/<abi>/python-X.Y.Z/lib/pythonX.Y/_sysconfigdata__*.py`.
+
+    The trailing identifier on the sysconfigdata filename varies by
+    toolchain:
+      - 3.12 (legacy `android-env.sh` path): `_sysconfigdata__linux_.py`
+      - 3.13+ (CPython's Android tooling): `_sysconfigdata__android_<host>-linux-android.py`
+    We glob `_sysconfigdata__*.py` to cover both — same pattern that
+    `find_sysconfigdata()` uses in `normalize_mobile_forge_install.py`.
     """
     android_root = install_root / "android"
     if not android_root.is_dir():
@@ -31,13 +38,8 @@ def _sysconfigdata_files(install_root: Path):
             continue
         # python-X.Y.Z dir name is version-dependent; glob for it.
         for py_dir in abi_dir.glob(f"python-{PYTHON_VERSION_SHORT}.*"):
-            sd = (
-                py_dir
-                / "lib"
-                / f"python{PYTHON_VERSION_SHORT}"
-                / "_sysconfigdata__linux_.py"
-            )
-            if sd.is_file():
+            lib_dir = py_dir / "lib" / f"python{PYTHON_VERSION_SHORT}"
+            for sd in sorted(lib_dir.glob("_sysconfigdata__*.py")):
                 yield abi_dir.name, sd
 
 
@@ -70,7 +72,8 @@ class BuiltSysconfigdataShape(unittest.TestCase):
         self.assertGreater(
             len(self.found),
             0,
-            f"No _sysconfigdata__linux_.py files found under {self.install_root}/android/. "
+            f"No _sysconfigdata__*.py files found under {self.install_root}/android/"
+            f"<abi>/python-{PYTHON_VERSION_SHORT}.*/lib/python{PYTHON_VERSION_SHORT}/. "
             f"Either build-all.sh produced nothing, or MOBILE_FORGE_INSTALL_TREE "
             f"points at the wrong dir.",
         )
