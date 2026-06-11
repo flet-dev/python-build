@@ -121,5 +121,7 @@ done
 
 rm -rf $build_dir/lib
 
-# final archive
-tar -czf dist/python-android-dart-$python_version_short-$abi.tar.gz -C $build_dir .
+# final archive — filename uses the FULL python version (e.g. 3.14.6, not
+# 3.14) so a single date-keyed release can host multiple patches of the
+# same minor side by side.
+tar -czf dist/python-android-dart-$python_version-$abi.tar.gz -C $build_dir .

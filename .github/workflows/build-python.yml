@@ -4,6 +4,16 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+    inputs:
+      release_date:
+        description: >
+          Release tag (YYYYMMDD). When set, a single GitHub release with that
+          tag is created and all per-platform tarballs from every matrix entry
+          are published as assets. Leave empty for a build-only run that uploads
+          per-job artifacts but does not publish a release.
+        required: false
+        type: string
+        default: ""
 
 # Cancel in-flight runs when a newer event arrives for the same logical branch.
 concurrency:
@@ -24,3 +34,34 @@ jobs:
     with:
       python_version: ${{ matrix.python_version }}
     secrets: inherit
+
+  publish-release:
+    name: Publish Release Assets
+    runs-on: ubuntu-latest
+    # Date-keyed releases (PBS-style): only publish when an operator explicitly
+    # triggers via workflow_dispatch with a `release_date` input. Pushes still
+    # exercise the matrix but leave per-job artifacts for inspection and do
+    # not touch GitHub releases.
+    if: github.event_name == 'workflow_dispatch' && inputs.release_date != ''
+    needs:
+      - build-matrix
+    permissions:
+      contents: write
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v8
+        with:
+          pattern: python-*
+          path: release-artifacts
+          merge-multiple: true
+
+      - name: Publish all artifacts to release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ inputs.release_date }}
+          name: ${{ inputs.release_date }}
+          files: release-artifacts/*
+          fail_on_unmatched_files: true
+          generate_release_notes: false
+          draft: false
+          prerelease: false

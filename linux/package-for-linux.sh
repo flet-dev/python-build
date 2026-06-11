@@ -47,5 +47,7 @@ fi
 mkdir -p $PYTHON_ARCH/dist
 rsync -av --exclude-from=python-linux-dart.exclude $PYTHON_ARCH/build/python/* $PYTHON_ARCH/dist
 
-# archive
-tar -czf "python-linux-dart-$PYTHON_VERSION_SHORT-$PYTHON_ARCH.tar.gz" -C "$PYTHON_ARCH/dist" .
+# archive — filename uses the FULL python version (e.g. 3.14.6, not 3.14)
+# so a single date-keyed release can host multiple patches of the same
+# minor side by side.
+tar -czf "python-linux-dart-$PYTHON_VERSION-$PYTHON_ARCH.tar.gz" -C "$PYTHON_ARCH/dist" .

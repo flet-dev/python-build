@@ -20,8 +20,10 @@ $srcDir = Join-Path $srcRoot "Python-$PythonVersion"
 $pcbuildDir = Join-Path $srcDir "PCbuild\amd64"
 $pythonTag = $PythonVersionShort -replace '\.', ''
 
-$packageRoot = Join-Path $workspace "windows\python-windows-for-dart-$PythonVersionShort"
-$zipPath = Join-Path $workspace "windows\python-windows-for-dart-$PythonVersionShort.zip"
+# Filename uses the FULL python version (e.g. 3.14.6, not 3.14) so a single
+# date-keyed release can host multiple patches of the same minor side by side.
+$packageRoot = Join-Path $workspace "windows\python-windows-for-dart-$PythonVersion"
+$zipPath = Join-Path $workspace "windows\python-windows-for-dart-$PythonVersion.zip"
 $excludeListPath = Join-Path $workspace "windows\python-windows-dart.exclude"
 $keepImportLibs = @("python3.lib", "python3_d.lib", "python$pythonTag.lib", "python${pythonTag}_d.lib")
 
