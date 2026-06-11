@@ -15,8 +15,8 @@ on:
         type: choice
         options:
           - 3.12.13
-          - 3.13.13
-          - 3.14.5
+          - 3.13.14
+          - 3.14.6
 
 env:
   PYTHON_VERSION: ${{ inputs.python_version || github.event.inputs.python_version }}
