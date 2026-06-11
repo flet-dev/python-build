@@ -34,7 +34,7 @@ jobs:
     runs-on: macos-26
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Derive short Python version
         shell: bash
@@ -72,7 +72,7 @@ jobs:
           bash ./package-macos-for-dart.sh . "$PYTHON_VERSION"
 
       - name: Upload Darwin build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: python-darwin-${{ env.PYTHON_VERSION }}
           path: darwin/dist/python-*.tar.gz
@@ -83,7 +83,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Derive short Python version
         shell: bash
@@ -125,7 +125,7 @@ jobs:
         run: python3 -m unittest discover -s android/tests -t android/tests -v
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: python-android-${{ env.PYTHON_VERSION }}
           path: android/dist/python-android-*.tar.gz
@@ -136,7 +136,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Derive short Python version
         shell: bash
@@ -158,7 +158,7 @@ jobs:
           bash ./package-for-linux.sh aarch64 ""
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: python-linux-${{ env.PYTHON_VERSION }}
           path: linux/python-linux-dart-*.tar.gz
@@ -168,7 +168,7 @@ jobs:
     name: Build Python for Windows
     runs-on: windows-2022
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Derive short Python version
         shell: pwsh
@@ -189,7 +189,7 @@ jobs:
             -PythonVersionShort "${{ env.PYTHON_VERSION_SHORT }}"
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: python-windows-${{ env.PYTHON_VERSION }}
           path: windows/python-windows-for-dart-*.zip
