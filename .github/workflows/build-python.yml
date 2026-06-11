@@ -49,14 +49,14 @@ jobs:
       contents: write
     steps:
       - name: Download all build artifacts
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@v8
         with:
           pattern: python-*
           path: release-artifacts
           merge-multiple: true
 
       - name: Publish all artifacts to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ inputs.release_date }}
           name: ${{ inputs.release_date }}
