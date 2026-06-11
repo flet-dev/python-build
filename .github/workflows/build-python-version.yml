@@ -58,18 +58,23 @@ jobs:
 
           # mobile-forge artifact: iOS-only install+support tree (same structure as before).
           # Captured before the macOS build also writes into ./support / ./install.
-          tar -czf dist/python-ios-mobile-forge-$PYTHON_VERSION_SHORT.tar.gz install support
+          tar -czf dist/python-ios-mobile-forge-$PYTHON_VERSION.tar.gz install support
 
           # macOS: universal2 framework built from source (all versions).
           python build_macos.py "$PYTHON_VERSION"
 
-          bash ./package-ios-for-dart.sh . "$PYTHON_VERSION_SHORT"
-          bash ./package-macos-for-dart.sh . "$PYTHON_VERSION_SHORT"
+          # Package scripts receive the FULL Python version: the tarball name
+          # carries it verbatim so a date-keyed release can host multiple
+          # patches of the same minor (e.g. 3.14.5 + 3.14.6) side by side.
+          # Internal lookups inside the scripts derive the short version
+          # themselves where they need it.
+          bash ./package-ios-for-dart.sh . "$PYTHON_VERSION"
+          bash ./package-macos-for-dart.sh . "$PYTHON_VERSION"
 
       - name: Upload Darwin build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: python-darwin-${{ env.PYTHON_VERSION_SHORT }}
+          name: python-darwin-${{ env.PYTHON_VERSION }}
           path: darwin/dist/python-*.tar.gz
           if-no-files-found: error
 
@@ -102,7 +107,7 @@ jobs:
         run: |
           bash ./build-all.sh "$PYTHON_VERSION"
           mkdir -p dist
-          tar -czf dist/python-android-mobile-forge-$PYTHON_VERSION_SHORT.tar.gz install support
+          tar -czf dist/python-android-mobile-forge-$PYTHON_VERSION.tar.gz install support
           bash ./package-for-dart.sh install "$PYTHON_VERSION" arm64-v8a
           bash ./package-for-dart.sh install "$PYTHON_VERSION" x86_64
           read version_major version_minor < <(echo "$PYTHON_VERSION" | sed -E 's/^([0-9]+)\.([0-9]+).*/\1 \2/')
@@ -122,7 +127,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: python-android-${{ env.PYTHON_VERSION_SHORT }}
+          name: python-android-${{ env.PYTHON_VERSION }}
           path: android/dist/python-android-*.tar.gz
           if-no-files-found: error
 
@@ -155,7 +160,7 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: python-linux-${{ env.PYTHON_VERSION_SHORT }}
+          name: python-linux-${{ env.PYTHON_VERSION }}
           path: linux/python-linux-dart-*.tar.gz
           if-no-files-found: error
 
@@ -186,42 +191,10 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: python-windows-${{ env.PYTHON_VERSION_SHORT }}
+          name: python-windows-${{ env.PYTHON_VERSION }}
           path: windows/python-windows-for-dart-*.zip
           if-no-files-found: error
 
-  publish-release:
-    name: Publish Release Assets
-    runs-on: ubuntu-latest
-    # Only publish GitHub release assets from the main branch; other branches still
-    # build (and upload per-job artifacts) but don't touch releases.
-    if: github.ref == 'refs/heads/main'
-    needs:
-      - build-darwin
-      - build-android
-      - build-linux
-      - build-windows
-    permissions:
-      contents: write
-    steps:
-      - name: Derive short Python version
-        shell: bash
-        run: |
-          echo "PYTHON_VERSION_SHORT=$(echo "$PYTHON_VERSION" | cut -d. -f1,2)" >> "$GITHUB_ENV"
-
-      - name: Download all build artifacts
-        uses: actions/download-artifact@v4
-        with:
-          pattern: python-*-${{ env.PYTHON_VERSION_SHORT }}
-          path: release-artifacts
-          merge-multiple: true
-
-      - name: Publish all artifacts to release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ env.PYTHON_VERSION_SHORT }}
-          files: release-artifacts/*
-          fail_on_unmatched_files: true
-          generate_release_notes: false
-          draft: false
-          prerelease: false
+  # The publish-release job lives in the parent workflow (build-python.yml):
+  # date-keyed releases collect tarballs from every matrix entry into one
+  # release, so the publish step has to run after the full matrix completes.

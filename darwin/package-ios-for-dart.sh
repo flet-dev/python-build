@@ -82,5 +82,7 @@ rm -rf __pycache__
 rm -rf **/__pycache__
 cd -
 
-# final archive
-tar -czf dist/python-ios-dart-$python_version_short.tar.gz -C $build_dir .
+# final archive — filename uses the FULL python version (e.g. 3.14.6, not
+# 3.14) so a single date-keyed release can host multiple patches of the
+# same minor side by side.
+tar -czf dist/python-ios-dart-$python_version.tar.gz -C $build_dir .
