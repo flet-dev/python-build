@@ -14,6 +14,17 @@ ios-arm64_x86_64-simulator/Python.framework/Headers/module.modulemap
 macos-arm64_x86_64/Python.framework/Headers
 macos-arm64_x86_64/Python.framework/Versions/*/_CodeSignature
 macos-arm64_x86_64/Python.framework/Versions/*/Headers
+# Standalone launcher app baked in by `make install` of CPython's framework
+# build. Its Mach-O carries the configure-time `--enable-framework` prefix
+# (e.g. /Users/runner/work/python-build/.../Python.framework/Versions/X.Y/
+# Python) as a hardcoded load command, so it can't dyld-load anywhere
+# except the original build host. When the produced xcframework lands
+# inside a host .app's Contents/Frameworks/, macOS LaunchServices scans
+# nested .app bundles and tries to launch this one — every scan produces
+# a "Python quit unexpectedly" dialog. It's never useful for the embedded
+# Python use case (libdart_bridge dlopens the framework binary directly,
+# the host app supplies the NSApplication context), so strip it here.
+macos-arm64_x86_64/Python.framework/Versions/*/Resources/Python.app
 macos-arm64_x86_64/Python.framework/Versions/*/bin
 macos-arm64_x86_64/Python.framework/Versions/*/share
 macos-arm64_x86_64/Python.framework/Versions/*/include
