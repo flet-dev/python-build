@@ -57,6 +57,12 @@ if [ $version_int -eq 312 ]; then
     # Android tooling; this 3.12-only patch matches that behavior at link time.
     patches+=" soname_linktime bldlibrary grp"
 fi
+if [ $version_int -ge 313 ]; then
+    # mimalloc (bundled since 3.13) issues a bare SYS_open at load on x86_64,
+    # which Android seccomp kills (SIGSYS) at dlopen of libpython. Switch it to
+    # SYS_openat. See patches/mimalloc_seccomp_openat.patch.
+    patches+=" mimalloc_seccomp_openat"
+fi
 for name in $patches; do
     patch_file="$script_dir/patches/$name.patch"
     echo "$patch_file"

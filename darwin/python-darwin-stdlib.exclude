@@ -19,8 +19,9 @@ tkinter
 turtle*
 wsgiref
 # Interactive-REPL / dev-only modules — never imported when running a script (embedded
-# mode); plus easter eggs and frozen demo modules.
-_pyrepl
+# mode); plus easter eggs and frozen demo modules. _pyrepl is intentionally NOT pruned:
+# CPython 3.14's pdb imports it at module load, so dropping it breaks pdb / pytest /
+# anything that imports it on-device.
 rlcompleter*
 tabnanny*
 antigravity*
