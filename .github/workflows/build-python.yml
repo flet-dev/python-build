@@ -28,7 +28,7 @@ jobs:
       versions: ${{ steps.read.outputs.versions }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       - name: Extract Python versions from manifest.json
         id: read
         # manifest.json is the single source of truth: it both selects which
@@ -63,7 +63,7 @@ jobs:
       contents: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download all build artifacts
         uses: actions/download-artifact@v8
