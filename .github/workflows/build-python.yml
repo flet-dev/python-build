@@ -21,15 +21,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  setup:
+    name: Read build matrix from manifest
+    runs-on: ubuntu-latest
+    outputs:
+      versions: ${{ steps.read.outputs.versions }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+      - name: Extract Python versions from manifest.json
+        id: read
+        # manifest.json is the single source of truth: it both selects which
+        # CPython versions are built here and is published as a release asset
+        # (see publish-release) for serious_python / flet to consume.
+        run: echo "versions=$(jq -c '[.pythons[].full_version]' manifest.json)" >> "$GITHUB_OUTPUT"
+
   build-matrix:
     name: Build Python ${{ matrix.python_version }}
+    needs: setup
     strategy:
       fail-fast: false
       matrix:
-        python_version:
-          - 3.12.13
-          - 3.13.14
-          - 3.14.6
+        python_version: ${{ fromJSON(needs.setup.outputs.versions) }}
     uses: ./.github/workflows/build-python-version.yml
     with:
       python_version: ${{ matrix.python_version }}
@@ -44,16 +57,25 @@ jobs:
     # not touch GitHub releases.
     if: github.event_name == 'workflow_dispatch' && inputs.release_date != ''
     needs:
+      - setup
       - build-matrix
     permissions:
       contents: write
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
       - name: Download all build artifacts
         uses: actions/download-artifact@v8
         with:
           pattern: python-*
           path: release-artifacts
           merge-multiple: true
+
+      - name: Add runtime manifest (with release date) to the release
+        # Publish the same manifest.json that drove this build, with the release
+        # date injected, so consumers can fetch a consistent version set by date.
+        run: jq '.release = "${{ inputs.release_date }}"' manifest.json > release-artifacts/manifest.json
 
       - name: Publish all artifacts to release
         uses: softprops/action-gh-release@v3
