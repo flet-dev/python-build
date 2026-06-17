@@ -22,7 +22,7 @@ To build all ABIs:
 ```
 
 ABI support:
-* Python 3.12: `arm64-v8a`, `armeabi-v7a`, `x86_64`, `x86`
+* Python 3.12: `arm64-v8a`, `armeabi-v7a`, `x86_64`
 * Python 3.13+: `arm64-v8a`, `x86_64`
 
 ## Credits
