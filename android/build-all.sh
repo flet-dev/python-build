@@ -10,7 +10,7 @@ version_int=$((version_major * 100 + version_minor))
 if [ $version_int -ge 313 ]; then
     abis="arm64-v8a x86_64"
 else
-    abis="arm64-v8a armeabi-v7a x86_64 x86"
+    abis="arm64-v8a armeabi-v7a x86_64"
 fi
 
 for abi in $abis; do
