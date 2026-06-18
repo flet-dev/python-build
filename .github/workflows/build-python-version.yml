@@ -108,13 +108,18 @@ jobs:
           bash ./build-all.sh "$PYTHON_VERSION"
           mkdir -p dist
           tar -czf dist/python-android-mobile-forge-$PYTHON_VERSION.tar.gz install support
-          bash ./package-for-dart.sh install "$PYTHON_VERSION" arm64-v8a
-          bash ./package-for-dart.sh install "$PYTHON_VERSION" x86_64
-          read version_major version_minor < <(echo "$PYTHON_VERSION" | sed -E 's/^([0-9]+)\.([0-9]+).*/\1 \2/')
-          version_int=$((version_major * 100 + version_minor))
-          if [ $version_int -lt 313 ]; then
-            bash ./package-for-dart.sh install "$PYTHON_VERSION" armeabi-v7a
+          # ABIs come from the manifest (`pythons.<short>.android_abis`) so a
+          # future minor only needs a one-line edit there — not a workflow
+          # bump. 3.12 ships armeabi-v7a; 3.13+ are 64-bit only (PEP 738).
+          short="$PYTHON_VERSION_SHORT"
+          abis=$(jq -r --arg s "$short" '.pythons[$s].android_abis[]' "$GITHUB_WORKSPACE/manifest.json")
+          if [ -z "$abis" ]; then
+            echo "::error::manifest.json has no .pythons[\"$short\"].android_abis"
+            exit 1
           fi
+          while IFS= read -r abi; do
+            bash ./package-for-dart.sh install "$PYTHON_VERSION" "$abi"
+          done <<< "$abis"
 
       - name: Run post-build tests
         shell: bash

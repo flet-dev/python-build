@@ -28,19 +28,23 @@ Schema:
       "standalone_release_date": "20260610",
       "pyodide_version": "314.0.0",
       "pyodide_platform_tag": "pyemscripten-2026.0-wasm32",
+      "android_abis": ["arm64-v8a", "x86_64"],
       "prerelease": false
     }
   }
 }
 ```
 
+`android_abis` lists the ABIs `package-for-dart.sh` builds for this minor —
+64-bit first, then `armeabi-v7a` if the minor still supports 32-bit Android.
+3.12 carries all three; 3.13+ are 64-bit-only ([PEP 738](https://peps.python.org/pep-0738/)).
+
 The committed file omits `release`; the publish step injects it.
 
 ### Adding or bumping a Python / Pyodide / dart_bridge version
 
 Edit [`manifest.json`](manifest.json) and open a PR. The CI matrix updates
-automatically from it; per-version build specifics (ABIs, the 3.12 vs 3.13+ build
-method) live in the platform build scripts.
+automatically from it.
 
 ## Releases
 
