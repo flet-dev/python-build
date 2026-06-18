@@ -7,6 +7,7 @@
       "standalone_release_date": "20260610",
       "pyodide_version": "0.27.7",
       "pyodide_platform_tag": "pyodide-2024.0-wasm32",
+      "android_abis": ["arm64-v8a", "x86_64", "armeabi-v7a"],
       "prerelease": false
     },
     "3.13": {
@@ -14,6 +15,7 @@
       "standalone_release_date": "20260610",
       "pyodide_version": "0.29.4",
       "pyodide_platform_tag": "pyemscripten-2025.0-wasm32",
+      "android_abis": ["arm64-v8a", "x86_64"],
       "prerelease": false
     },
     "3.14": {
@@ -21,6 +23,7 @@
       "standalone_release_date": "20260610",
       "pyodide_version": "314.0.0",
       "pyodide_platform_tag": "pyemscripten-2026.0-wasm32",
+      "android_abis": ["arm64-v8a", "x86_64"],
       "prerelease": false
     }
   }
