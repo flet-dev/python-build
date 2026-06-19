@@ -20,6 +20,9 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   setup:
     name: Read build matrix from manifest
@@ -28,7 +31,9 @@ jobs:
       versions: ${{ steps.read.outputs.versions }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
       - name: Extract Python versions from manifest.json
         id: read
         # manifest.json is the single source of truth: it both selects which
@@ -46,7 +51,6 @@ jobs:
     uses: ./.github/workflows/build-python-version.yml
     with:
       python_version: ${{ matrix.python_version }}
-    secrets: inherit
 
   publish-release:
     name: Publish Release Assets
@@ -63,10 +67,12 @@ jobs:
       contents: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
 
       - name: Download all build artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           pattern: python-*
           path: release-artifacts
@@ -75,10 +81,12 @@ jobs:
       - name: Add runtime manifest (with release date) to the release
         # Publish the same manifest.json that drove this build, with the release
         # date injected, so consumers can fetch a consistent version set by date.
-        run: jq '.release = "${{ inputs.release_date }}"' manifest.json > release-artifacts/manifest.json
+        env:
+          INPUTS_RELEASE_DATE: ${{ inputs.release_date }}
+        run: jq '.release = "${INPUTS_RELEASE_DATE}"' manifest.json > release-artifacts/manifest.json
 
       - name: Publish all artifacts to release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3
         with:
           tag_name: ${{ inputs.release_date }}
           name: ${{ inputs.release_date }}
