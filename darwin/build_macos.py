@@ -483,10 +483,19 @@ def make_relocatable(framework: Path, short: str) -> None:
 def codesign_framework(framework: Path, short: str) -> None:
     args = ["codesign", "-s", "-", "--preserve-metadata=identifier,entitlements,flags,runtime", "-f"]
     run(args + [framework / "Versions" / short / "Python"])
-    for pattern in ("*.dylib", "*.so"):
-        for binary in framework.rglob(pattern):
-            if binary.is_file():
-                run(args + [binary])
+    # Sign the framework binary and the bundled OpenSSL dylibs, but NOT the
+    # C-extension .so. strip_framework() already left them stripped and
+    # *linker-signed* (the replaceable adhoc signature install_name_tool/strip
+    # apply on arm64). Re-signing with `codesign -s -` would replace that with an
+    # *explicit* adhoc signature (CodeDirectory flags 0x2 instead of 0x20002),
+    # which a downstream Xcode app build refuses to strip ("not stripping binary
+    # because it is signed", once per extension) and won't re-sign. A
+    # linker-signed extension is instead re-signed into the consuming app
+    # cleanly, exactly like a pip wheel's .so. The .so are extracted to the
+    # stdlib resource tree, so they aren't covered by the framework's own seal.
+    for binary in framework.rglob("*.dylib"):
+        if binary.is_file():
+            run(args + [binary])
     run(args + [framework])
 
 
