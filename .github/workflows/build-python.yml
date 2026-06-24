@@ -83,7 +83,7 @@ jobs:
         # date injected, so consumers can fetch a consistent version set by date.
         env:
           INPUTS_RELEASE_DATE: ${{ inputs.release_date }}
-        run: jq '.release = "${INPUTS_RELEASE_DATE}"' manifest.json > release-artifacts/manifest.json
+        run: jq --arg date "$INPUTS_RELEASE_DATE" '.release = $date' manifest.json > release-artifacts/manifest.json
 
       - name: Publish all artifacts to release
         uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
