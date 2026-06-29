@@ -36,8 +36,11 @@ Schema:
 ```
 
 `android_abis` lists the ABIs `package-for-dart.sh` builds for this minor —
-64-bit first, then `armeabi-v7a` if the minor still supports 32-bit Android.
-3.12 carries all three; 3.13+ are 64-bit-only ([PEP 738](https://peps.python.org/pep-0738/)).
+64-bit (`arm64-v8a`, `x86_64`) plus 32-bit `armeabi-v7a`. [PEP 738](https://peps.python.org/pep-0738/)
+makes 64-bit Android the *tested* Tier-3 configuration, but CPython's official
+`Android/android.py` still builds 32-bit ARM (it's in its supported `HOSTS`), so
+all three minors carry `armeabi-v7a`. Drop an ABI from a minor's list to stop
+building it.
 
 The committed file omits `release`; the publish step injects it.
 
