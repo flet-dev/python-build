@@ -148,10 +148,10 @@ if [ $version_int -le 312 ]; then
     sed -i -e "s/_PYTHON_HOST_PLATFORM=.*/_PYTHON_HOST_PLATFORM=android-$api_level-$abi/" $PREFIX/lib/python$version_short/config-$version_short/Makefile
 else
     case "$abi" in
-        arm64-v8a|x86_64)
+        arm64-v8a|x86_64|armeabi-v7a)
             ;;
         *)
-            echo "Python $version_short official Android build supports only: arm64-v8a, x86_64"
+            echo "Python $version_short official Android build supports only: arm64-v8a, x86_64, armeabi-v7a"
             exit 1
             ;;
     esac

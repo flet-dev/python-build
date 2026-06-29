@@ -21,9 +21,8 @@ To build all ABIs:
 ./build-all.sh 3.13.12
 ```
 
-ABI support:
-* Python 3.12: `arm64-v8a`, `armeabi-v7a`, `x86_64`
-* Python 3.13+: `arm64-v8a`, `x86_64`
+ABI support (all minors): `arm64-v8a`, `x86_64`, `armeabi-v7a`. The exact set
+built per minor is driven by `android_abis` in the top-level `manifest.json`.
 
 ## Credits
 
