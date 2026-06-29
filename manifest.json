@@ -4,7 +4,7 @@
   "pythons": {
     "3.12": {
       "full_version": "3.12.13",
-      "standalone_release_date": "20260610",
+      "standalone_release_date": "20260623",
       "pyodide_version": "0.27.7",
       "pyodide_platform_tag": "pyodide-2024.0-wasm32",
       "android_abis": ["arm64-v8a", "x86_64", "armeabi-v7a"],
@@ -12,7 +12,7 @@
     },
     "3.13": {
       "full_version": "3.13.14",
-      "standalone_release_date": "20260610",
+      "standalone_release_date": "20260623",
       "pyodide_version": "0.29.4",
       "pyodide_platform_tag": "pyemscripten-2025.0-wasm32",
       "android_abis": ["arm64-v8a", "x86_64"],
@@ -20,8 +20,8 @@
     },
     "3.14": {
       "full_version": "3.14.6",
-      "standalone_release_date": "20260610",
-      "pyodide_version": "314.0.0",
+      "standalone_release_date": "20260623",
+      "pyodide_version": "314.0.1",
       "pyodide_platform_tag": "pyemscripten-2026.0-wasm32",
       "android_abis": ["arm64-v8a", "x86_64"],
       "prerelease": false
