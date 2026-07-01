@@ -103,13 +103,37 @@ def build(version: str, short: str, minor: int, root: Path, downloads: Path,
             for shim in bindir.glob("*") if bindir.is_dir() else []:
                 shim.chmod(0o755)
 
+    # Re-enable _multiprocessing on iOS. CPython marks it (with _posixsubprocess and
+    # _posixshmem) n/a for iOS because process *spawning* is impossible in the sandbox
+    # (no usable fork/exec). But _multiprocessing itself — SemLock via sem_open, and
+    # socket-based Connection/Listener — builds fine on Darwin (macOS ships it); only
+    # the spawning is unusable. Flipping just this one module makes
+    # `import multiprocessing[.connection/.synchronize]` succeed, fixing the import-crash
+    # class (e.g. scikit-learn's sklearn.callback._transport) without pretending
+    # subprocess works. Hits both the vendored-patch configure (<3.14) and upstream's
+    # iOS PY_STDLIB_MOD_SET_NA (3.14+); a no-op if the string isn't present.
+    configure = src / "configure"
+    configure.write_text(
+        configure.read_text().replace(
+            "py_cv_module__multiprocessing=n/a", "py_cv_module__multiprocessing=yes"
+        )
+    )
+
     # iOS's SDK declares pipe2/dup3 in headers but doesn't provide them, and on recent
     # SDKs configure mis-detects them (esp. the simulator), then the build fails with
     # "call to undeclared function 'pipe2'". The Apple tool doesn't expose configure
     # flags, but configure honors CONFIG_SITE, and the tool copies os.environ into its
     # subprocesses — so feed the same ac_cv overrides beeware passes via a site file.
+    # sem_timedwait/sem_clockwait: Darwin lacks both (the SDK may still mis-declare
+    # them, like pipe2); force them off so _multiprocessing/semaphore.c takes its
+    # no-timeout fallback instead of referencing symbols that won't link.
     config_site = build_dir / "ios-config.site"
-    config_site.write_text("ac_cv_func_pipe2=no\nac_cv_func_dup3=no\n")
+    config_site.write_text(
+        "ac_cv_func_pipe2=no\n"
+        "ac_cv_func_dup3=no\n"
+        "ac_cv_func_sem_timedwait=no\n"
+        "ac_cv_func_sem_clockwait=no\n"
+    )
     env = {**os.environ, "CONFIG_SITE": str(config_site)}
 
     # The standard Apple builder: builds the build-python, every iOS slice, downloads its
