@@ -23,6 +23,7 @@ where <target> is iphoneos.arm64, iphonesimulator.arm64 or iphonesimulator.x86_6
 Run from the ``darwin/`` directory:
     python build_ios.py 3.13.13
 """
+
 from __future__ import annotations
 
 import argparse
@@ -57,8 +58,13 @@ def _emit(line: str) -> None:
 def run(cmd: list, cwd: Path | None = None, env: dict | None = None) -> None:
     _emit(f">>> {' '.join(str(c) for c in cmd)}" + (f"  (cwd={cwd})" if cwd else ""))
     proc = subprocess.Popen(
-        [str(c) for c in cmd], cwd=cwd, env=env,
-        stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1,
+        [str(c) for c in cmd],
+        cwd=cwd,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+        bufsize=1,
     )
     assert proc.stdout is not None
     for line in proc.stdout:
@@ -79,10 +85,19 @@ def download(url: str, dest: Path) -> None:
     tmp.replace(dest)
 
 
-def build(version: str, short: str, minor: int, root: Path, downloads: Path,
-          build_dir: Path, patches_dir: Path) -> None:
+def build(
+    version: str,
+    short: str,
+    minor: int,
+    root: Path,
+    downloads: Path,
+    build_dir: Path,
+    patches_dir: Path,
+) -> None:
     tarball = downloads / f"Python-{version}.tgz"
-    download(f"https://www.python.org/ftp/python/{version}/Python-{version}.tgz", tarball)
+    download(
+        f"https://www.python.org/ftp/python/{version}/Python-{version}.tgz", tarball
+    )
 
     src = build_dir / f"Python-{version}"
     if src.exists():
@@ -99,7 +114,9 @@ def build(version: str, short: str, minor: int, root: Path, downloads: Path,
         # `patch` doesn't preserve the executable bit, so the compiler/linker shim scripts
         # the patch adds come out non-executable. Restore +x (beeware's Makefile does the
         # same) or configure fails with "C compiler cannot create executables".
-        for bindir in list(src.glob("Apple/*/Resources/bin")) + [src / "iOS" / "Resources" / "bin"]:
+        for bindir in list(src.glob("Apple/*/Resources/bin")) + [
+            src / "iOS" / "Resources" / "bin"
+        ]:
             for shim in bindir.glob("*") if bindir.is_dir() else []:
                 shim.chmod(0o755)
 
@@ -107,11 +124,9 @@ def build(version: str, short: str, minor: int, root: Path, downloads: Path,
     # _posixshmem) n/a for iOS because process *spawning* is impossible in the sandbox
     # (no usable fork/exec). But _multiprocessing itself — SemLock via sem_open, and
     # socket-based Connection/Listener — builds fine on Darwin (macOS ships it); only
-    # the spawning is unusable. Flipping just this one module makes
-    # `import multiprocessing[.connection/.synchronize]` succeed, fixing the import-crash
-    # class (e.g. scikit-learn's sklearn.callback._transport) without pretending
-    # subprocess works. Hits both the vendored-patch configure (<3.14) and upstream's
-    # iOS PY_STDLIB_MOD_SET_NA (3.14+); a no-op if the string isn't present.
+    # the spawning is unusable. Flipping this makes `import multiprocessing[.connection/.synchronize]`
+    # succeed, without pretending subprocess works. Hits both the vendored-patch configure
+    # (<3.14) and upstream's iOS PY_STDLIB_MOD_SET_NA (3.14+); a no-op if the string isn't present.
     configure = src / "configure"
     configure.write_text(
         configure.read_text().replace(
@@ -166,7 +181,11 @@ def _embed_ios_version_in_host_triple(sysconfig_path: Path) -> None:
         triple = mo.group(1)
         if "-apple-ios" not in triple or re.search(r"-apple-ios\d", triple):
             return mo.group(0)  # not iOS, or already versioned
-        return "'HOST_GNU_TYPE': '" + triple.replace("-apple-ios", f"-apple-ios{deploy}", 1) + "'"
+        return (
+            "'HOST_GNU_TYPE': '"
+            + triple.replace("-apple-ios", f"-apple-ios{deploy}", 1)
+            + "'"
+        )
 
     new = re.sub(r"'HOST_GNU_TYPE':\s*'([^']*)'", repl, text)
     if new != text:
@@ -234,8 +253,12 @@ def reshape(version: str, short: str, src: Path, root: Path) -> None:
         _strip([*(dst / "lib-dynload").glob("*.so")])
 
     # Strip the per-slice framework binary too (the libpython that ships in the xcframework).
-    _strip([dst_xcf / sl / "Python.framework" / "Python"
-            for sl in {s for s, _ in XCF_SLICE_FOR_TARGET.values()}])
+    _strip(
+        [
+            dst_xcf / sl / "Python.framework" / "Python"
+            for sl in {s for s, _ in XCF_SLICE_FOR_TARGET.values()}
+        ]
+    )
 
     deps = reshape_mobile_forge(version, short, cross, dst_xcf, root)
 
@@ -251,13 +274,18 @@ def reshape(version: str, short: str, src: Path, root: Path) -> None:
 # Map cpython-apple-source-deps lib name -> the VERSIONS label mobile-forge greps for
 # (case-insensitive, so exact casing is cosmetic; match beeware's labels).
 DEP_LABELS = {
-    "openssl": "OpenSSL", "libffi": "libFFI", "xz": "XZ",
-    "bzip2": "BZip2", "mpdecimal": "mpdecimal", "zstd": "zstd",
+    "openssl": "OpenSSL",
+    "libffi": "libFFI",
+    "xz": "XZ",
+    "bzip2": "BZip2",
+    "mpdecimal": "mpdecimal",
+    "zstd": "zstd",
 }
 
 
-def reshape_mobile_forge(version: str, short: str, cross: Path, dst_xcf: Path,
-                         root: Path) -> dict:
+def reshape_mobile_forge(
+    version: str, short: str, cross: Path, dst_xcf: Path, root: Path
+) -> dict:
     """Add what flet-dev/mobile-forge needs (beyond the dart inputs):
 
     * per-arch C-dependency dirs ``install/iOS/<arch>/<dep>-<ver>/`` (re-extracted from the
@@ -274,7 +302,9 @@ def reshape_mobile_forge(version: str, short: str, cross: Path, dst_xcf: Path,
     # 1. Per-arch dependency dirs from the downloaded tarballs.
     deps: dict[str, str] = {}
     downloads = cross / "downloads"
-    pattern = re.compile(r"^(?P<dep>[a-z0-9]+)-(?P<ver>\d[^-]*-\d+)-(?P<target>.+)\.tar\.gz$")
+    pattern = re.compile(
+        r"^(?P<dep>[a-z0-9]+)-(?P<ver>\d[^-]*-\d+)-(?P<target>.+)\.tar\.gz$"
+    )
     for tarball in sorted(downloads.glob("*.tar.gz")) if downloads.is_dir() else []:
         m = pattern.match(tarball.name)
         if not m or m["target"] not in targets:
@@ -293,13 +323,17 @@ def reshape_mobile_forge(version: str, short: str, cross: Path, dst_xcf: Path,
         stub = slice_path / "bin" / f"python{short}"
         stub.parent.mkdir(parents=True, exist_ok=True)
         if not stub.exists():
-            stub.write_text(f"#!/bin/bash\necho \"Can't run {slice_dir} binary\"\nexit 1\n")
+            stub.write_text(
+                f'#!/bin/bash\necho "Can\'t run {slice_dir} binary"\nexit 1\n'
+            )
             stub.chmod(0o755)
         # Copy each arch's _sysconfigdata into platform-config/<arch>-<sdk>/ where
         # CrossVEnv.create() looks for it.
         for sysconfig in slice_path.glob(f"lib-*/{pyver}/_sysconfigdata__ios_*.py"):
-            m = re.match(r"_sysconfigdata__ios_(?P<arch>.+)-(?P<sdk>iphoneos|iphonesimulator)\.py",
-                         sysconfig.name)
+            m = re.match(
+                r"_sysconfigdata__ios_(?P<arch>.+)-(?P<sdk>iphoneos|iphonesimulator)\.py",
+                sysconfig.name,
+            )
             if not m:
                 continue
             pc = slice_path / "platform-config" / f"{m['arch']}-{m['sdk']}"
@@ -315,8 +349,12 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("version", help="full CPython version, e.g. 3.13.13")
-    parser.add_argument("--root", type=Path, default=Path.cwd(),
-                        help="output root (default: cwd; emits install/ and support/ here)")
+    parser.add_argument(
+        "--root",
+        type=Path,
+        default=Path.cwd(),
+        help="output root (default: cwd; emits install/ and support/ here)",
+    )
     args = parser.parse_args()
 
     version = args.version
