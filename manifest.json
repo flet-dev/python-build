@@ -1,6 +1,6 @@
 {
   "default_python_version": "3.14",
-  "dart_bridge_version": "1.4.1",
+  "dart_bridge_version": "1.5.0",
   "pythons": {
     "3.12": {
       "full_version": "3.12.13",
@@ -21,7 +21,7 @@
     "3.14": {
       "full_version": "3.14.6",
       "standalone_release_date": "20260623",
-      "pyodide_version": "314.0.1",
+      "pyodide_version": "314.0.2",
       "pyodide_platform_tag": "pyemscripten-2026.0-wasm32",
       "android_abis": ["arm64-v8a", "x86_64", "armeabi-v7a"],
       "prerelease": false
