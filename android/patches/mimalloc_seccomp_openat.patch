@@ -1,0 +1,22 @@
+mimalloc: use SYS_openat instead of SYS_open (Android seccomp).
+
+CPython bundles mimalloc since 3.13. On Android, mimalloc's load-time constructor
+(mi_process_load -> unix_detect_overcommit, Objects/mimalloc/init.c) reads
+/proc/sys/vm/overcommit_memory through mi_prim_open. On platforms where SYS_open
+is defined (x86_64) mi_prim_open issues the bare open(2) syscall directly (to
+avoid recursion while mimalloc is still initializing). Android's bionic seccomp
+policy forbids open(2) -- only openat(2) is permitted -- so the kernel raises
+SIGSYS (SYS_SECCOMP) and the process is killed at dlopen() of libpython, before
+the interpreter starts. 3.12 has no mimalloc; arm64 is unaffected (it has no
+SYS_open, so mimalloc falls back to libc open(), which bionic routes through
+openat). SYS_openat(AT_FDCWD, ...) is semantically identical and allowed.
+
+--- a/Objects/mimalloc/prim/unix/prim.c
++++ b/Objects/mimalloc/prim/unix/prim.c
+@@ -67,5 +67,5 @@
+ static int mi_prim_open(const char* fpath, int open_flags) {
+-  return syscall(SYS_open,fpath,open_flags,0);
++  return syscall(SYS_openat,AT_FDCWD,fpath,open_flags,0);
+ }
+ static ssize_t mi_prim_read(int fd, void* buf, size_t bufsize) {
+   return syscall(SYS_read,fd,buf,bufsize);

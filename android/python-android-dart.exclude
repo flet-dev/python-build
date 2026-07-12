@@ -20,8 +20,8 @@ lib/python*/tkinter
 lib/python*/turtle*
 lib/python*/wsgiref
 # Interactive-REPL / dev-only modules + easter eggs / frozen demos (never imported when
-# running a script in embedded mode).
-lib/python*/_pyrepl
+# running a script in embedded mode). _pyrepl is intentionally NOT pruned: CPython 3.14's
+# pdb imports it at module load, so dropping it breaks pdb / pytest / anything that imports it.
 lib/python*/rlcompleter*
 lib/python*/tabnanny*
 lib/python*/antigravity*
