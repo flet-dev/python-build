@@ -120,18 +120,31 @@ def build(
             for shim in bindir.glob("*") if bindir.is_dir() else []:
                 shim.chmod(0o755)
 
-    # Re-enable _multiprocessing on iOS. CPython marks it (with _posixsubprocess and
-    # _posixshmem) n/a for iOS because process *spawning* is impossible in the sandbox
-    # (no usable fork/exec). But _multiprocessing itself — SemLock via sem_open, and
-    # socket-based Connection/Listener — builds fine on Darwin (macOS ships it); only
-    # the spawning is unusable. Flipping this makes `import multiprocessing[.connection/.synchronize]`
-    # succeed, without pretending subprocess works. Hits both the vendored-patch configure
-    # (<3.14) and upstream's iOS PY_STDLIB_MOD_SET_NA (3.14+); a no-op if the string isn't present.
+    # Re-enable _multiprocessing AND _posixshmem on iOS. CPython marks them (with
+    # _posixsubprocess) n/a for iOS because process *spawning* is impossible in the
+    # sandbox (no usable fork/exec). But _multiprocessing itself — SemLock via
+    # sem_open, and socket-based Connection/Listener — builds fine on Darwin (macOS
+    # ships it); only the spawning is unusable. Flipping this makes `import
+    # multiprocessing[.connection/.synchronize]` succeed, without pretending
+    # subprocess works.
+    #
+    # _posixshmem must be flipped too: `multiprocessing.resource_tracker` (imported
+    # transitively by `import multiprocessing`, e.g. scikit-learn -> joblib) does an
+    # UNCONDITIONAL `import _posixshmem` on posix, so with _multiprocessing enabled
+    # but _posixshmem absent, that import raises ModuleNotFoundError and takes the
+    # whole consumer down. shm_open/shm_unlink build fine on Darwin/iOS (the sandbox
+    # restricts USE, not the build; nothing here uses shared memory), and upstream
+    # 3.13's official iOS support ships _posixshmem too. _posixsubprocess stays n/a
+    # (it genuinely needs fork/exec). Hits both the vendored-patch configure (<3.14)
+    # and upstream's iOS PY_STDLIB_MOD_SET_NA (3.14+); a no-op if the string isn't
+    # present.
     configure = src / "configure"
     configure.write_text(
-        configure.read_text().replace(
+        configure.read_text()
+        .replace(
             "py_cv_module__multiprocessing=n/a", "py_cv_module__multiprocessing=yes"
         )
+        .replace("py_cv_module__posixshmem=n/a", "py_cv_module__posixshmem=yes")
     )
 
     # iOS's SDK declares pipe2/dup3 in headers but doesn't provide them, and on recent
