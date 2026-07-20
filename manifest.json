@@ -1,6 +1,6 @@
 {
   "default_python_version": "3.14",
-  "dart_bridge_version": "1.5.0",
+  "dart_bridge_version": "1.5.1",
   "pythons": {
     "3.12": {
       "full_version": "3.12.13",
