@@ -52,17 +52,134 @@ jobs:
     with:
       python_version: ${{ matrix.python_version }}
 
+  # Release-only, isolated signing job. The provider certificate is never
+  # available to build-matrix (which runs on every push and PR); it lives in the
+  # protected `release-signing` environment and is only reachable from an
+  # explicit release dispatch on main.
+  #
+  # Signing operates on the finished archives rather than inside the build, which
+  # guarantees the required ordering: every mutation (install names, plists,
+  # privacy manifests, headers, pruning, stripping) is already done by the time
+  # an archive exists. The script re-packs and re-verifies after a round trip.
+  sign-darwin-artifacts:
+    name: Provider-sign Darwin XCFrameworks
+    runs-on: macos-26
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      && inputs.release_date != ''
+      && github.ref == 'refs/heads/main'
+    needs:
+      - build-matrix
+    environment: release-signing
+    env:
+      XCFRAMEWORK_EXPECTED_TEAM_ID: ${{ vars.XCFRAMEWORK_EXPECTED_TEAM_ID }}
+      # Missing credentials, a missing secure timestamp, a wrong team, or an
+      # archive containing zero XCFrameworks all fail the release here.
+      REQUIRE_XCFRAMEWORK_SIGNATURE: '1'
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          persist-credentials: false
+
+      - name: Download unsigned Darwin archives
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: darwin-unsigned-*
+          path: unsigned
+          merge-multiple: true
+
+      - name: Import Apple Distribution certificate into a temporary keychain
+        env:
+          CERT_P12_BASE64: ${{ secrets.APPLE_DISTRIBUTION_CERT_P12_BASE64 }}
+          CERT_P12_PASSWORD: ${{ secrets.APPLE_DISTRIBUTION_CERT_P12_PASSWORD }}
+        run: |
+          set -euo pipefail
+          : "${CERT_P12_BASE64:?APPLE_DISTRIBUTION_CERT_P12_BASE64 is not set}"
+          : "${CERT_P12_PASSWORD:?APPLE_DISTRIBUTION_CERT_P12_PASSWORD is not set}"
+
+          KEYCHAIN_PATH="$RUNNER_TEMP/xcframework-signing.keychain-db"
+          CERT_PATH="$RUNNER_TEMP/xcframework-signing.p12"
+          # Ephemeral: the keychain lives for this job only and is deleted in the
+          # always-run cleanup step, so the password never leaves this step.
+          KEYCHAIN_PASSWORD=$(openssl rand -base64 24)
+
+          printf '%s' "$CERT_P12_BASE64" | base64 --decode > "$CERT_PATH"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # No -A: the private key is reachable only by the two Apple tools named
+          # below, not by any process that happens to run in this job.
+          security import "$CERT_PATH" -k "$KEYCHAIN_PATH" -P "$CERT_P12_PASSWORD" \
+            -f pkcs12 -T /usr/bin/codesign -T /usr/bin/security
+          security set-key-partition-list -S apple-tool:,apple: -s \
+            -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH" >/dev/null
+
+          # codesign resolves an identity through the search list even when
+          # --keychain is passed, so prepend ours to the user list.
+          security list-keychains -d user -s "$KEYCHAIN_PATH" \
+            $(security list-keychains -d user | tr -d '"')
+
+          # Derive EXACTLY ONE fingerprint. Selecting by display name is
+          # ambiguous when a keychain holds more than one matching certificate,
+          # and codesign then picks arbitrarily; a hard count check turns a
+          # multi-certificate .p12 into a build failure instead of a coin flip.
+          IDENTITIES=$(security find-identity -v -p codesigning "$KEYCHAIN_PATH")
+          echo "$IDENTITIES"
+          FPRS=$(printf '%s\n' "$IDENTITIES" \
+                   | sed -n 's/^ *[0-9]*) \([0-9A-F]\{40\}\) .*/\1/p' | sort -u)
+          COUNT=$(printf '%s' "$FPRS" | grep -c . || true)
+          if [ "$COUNT" -ne 1 ]; then
+            echo "::error::expected exactly 1 codesigning identity in the imported keychain, found $COUNT"
+            exit 1
+          fi
+
+          # Fingerprint and keychain path are not secrets.
+          echo "XCFRAMEWORK_CODESIGN_IDENTITY=$FPRS" >> "$GITHUB_ENV"
+          echo "XCFRAMEWORK_SIGNING_KEYCHAIN=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
+
+      - name: Sign and re-pack Darwin archives
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          archives=(unsigned/python-*.tar.gz)
+          if [ "${#archives[@]}" -eq 0 ]; then
+            echo "::error::no Darwin archives to sign"
+            exit 1
+          fi
+          bash darwin/sign_darwin_archives.sh signed "${archives[@]}"
+
+      - name: Upload signed Darwin archives
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: python-darwin-signed
+          path: signed/python-*.tar.gz
+          if-no-files-found: error
+
+      - name: Remove temporary keychain and certificate
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/xcframework-signing.keychain-db" 2>/dev/null || true
+          rm -f "$RUNNER_TEMP/xcframework-signing.p12"
+
   publish-release:
     name: Publish Release Assets
     runs-on: ubuntu-latest
     # Date-keyed releases (PBS-style): only publish when an operator explicitly
-    # triggers via workflow_dispatch with a `release_date` input. Pushes still
-    # exercise the matrix but leave per-job artifacts for inspection and do
-    # not touch GitHub releases.
-    if: github.event_name == 'workflow_dispatch' && inputs.release_date != ''
+    # triggers via workflow_dispatch with a `release_date` input, and only from
+    # the protected main branch — the same condition that gates real signing, so
+    # a release can never be assembled from artifacts that were never signed.
+    if: >-
+      github.event_name == 'workflow_dispatch'
+      && inputs.release_date != ''
+      && github.ref == 'refs/heads/main'
     needs:
       - setup
       - build-matrix
+      - sign-darwin-artifacts
     permissions:
       contents: write
     steps:
@@ -71,12 +188,50 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Download all build artifacts
+      # Downloaded by explicit pattern, never `python-*` wholesale: the unsigned
+      # Darwin build artifacts are named `darwin-unsigned-*` precisely so no
+      # pattern here can reach them. The only Darwin tarballs that enter the
+      # release directory are the ones sign-darwin-artifacts produced.
+      - name: Download Android build artifacts
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
-          pattern: python-*
+          pattern: python-android-*
           path: release-artifacts
           merge-multiple: true
+
+      - name: Download Linux build artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: python-linux-*
+          path: release-artifacts
+          merge-multiple: true
+
+      - name: Download Windows build artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: python-windows-*
+          path: release-artifacts
+          merge-multiple: true
+
+      - name: Download signed Darwin artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: python-darwin-signed
+          path: release-artifacts
+
+      - name: Assert the release payload carries the signed Darwin tarballs
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          ls -lh release-artifacts
+          for kind in python-ios-dart python-macos-dart python-ios-mobile-forge; do
+            found=(release-artifacts/$kind-*.tar.gz)
+            if [ "${#found[@]}" -eq 0 ]; then
+              echo "::error::no $kind-*.tar.gz in the release payload"
+              exit 1
+            fi
+          done
 
       - name: Add runtime manifest (with release date) to the release
         # Publish the same manifest.json that drove this build, with the release

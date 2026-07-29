@@ -44,6 +44,13 @@ rm -rf $frameworks_dir/Python.xcframework/lib
 cp -r $script_dir/Modules $frameworks_dir/Python.xcframework/ios-arm64/Python.framework
 cp -r $script_dir/Modules $frameworks_dir/Python.xcframework/ios-arm64_x86_64-simulator/Python.framework
 
+# Stable, provider-owned identifier for the Python runtime, replacing CPython's
+# shared `org.python.python`. Assigned here — while the xcframework is still
+# unsigned — because the downstream signing job seals the bundle and any later
+# plist edit invalidates that seal. serious_python used to rewrite this to the
+# consuming app's bundle id; it no longer does, and must not.
+xcf_set_framework_identifier "$frameworks_dir/Python.xcframework" "$XCF_PYTHON_RUNTIME_IDENTIFIER"
+
 # copy stdlibs
 for arch in "${archs[@]}"; do
     rsync -av --exclude-from=$script_dir/python-darwin-stdlib.exclude $python_apple_support_root/install/iOS/$arch/python-*/lib/python$python_version_short/* $stdlib_dir/$arch
@@ -65,6 +72,23 @@ find "$stdlib_dir/${archs[0]}/lib-dynload" -name "*.$dylib_ext" | while read ful
         $python_frameworks_dir
     #break # run for one lib only - for tests
 done
+
+# The privacy manifests are copied into the frameworks by
+# create_xcframework_from_dylibs above. Apple's scan reads them out of the
+# embedded framework, so a silent miss here surfaces much later as an App Store
+# rejection — assert instead.
+for _pm in _ssl _hashlib; do
+    for _slice in ios-arm64 ios-arm64_x86_64-simulator; do
+        _pm_path="$python_frameworks_dir/$_pm.xcframework/$_slice/$_pm.framework/PrivacyInfo.xcprivacy"
+        [ -f "$_pm_path" ] || { echo "missing privacy manifest: $_pm_path"; exit 1; }
+    done
+done
+echo "Privacy manifests present for _ssl and _hashlib"
+
+# Last plist-touching step before the archive: every identifier must be valid,
+# unique, consistent across slices, and provider-owned. Anything that fails here
+# would otherwise be signed as-is and only diagnosed from an IPA.
+xcf_validate_identifiers "$frameworks_dir" "$python_frameworks_dir"
 
 mv $stdlib_dir/${archs[0]}/* $stdlib_dir
 

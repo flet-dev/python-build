@@ -2,6 +2,10 @@ archs=("iphoneos.arm64" "iphonesimulator.arm64" "iphonesimulator.x86_64")
 
 dylib_ext=so
 
+xcf_utils_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
+# Stable provider-owned bundle identifiers (dev.flet.python.*) + their validation.
+. "$xcf_utils_dir/xcframework_identifiers.sh"
+
 # Build-provenance values that Xcode stamps into every framework Info.plist it
 # produces (DT* / BuildMachineOSBuild). The frameworks here are assembled by hand
 # from lib-dynload .so's, so without this they carry none of them and the bundle
@@ -129,11 +133,14 @@ create_xcframework_from_dylibs() {
     echo "Creating framework for $dylib_relative_path"
     dylib_without_ext=$(echo $dylib_relative_path | cut -d "." -f 1)
     framework=$(echo $dylib_without_ext | tr "/" ".")
-    framework_identifier=${framework//_/-}
-    while [[ $framework_identifier == -* ]]; do
-        framework_identifier=${framework_identifier#-}
-    done
+    # Provider-owned and stable: `dev.flet.python.-ssl`, never `<app>.-ssl`. It is
+    # assigned here, before the xcframework is created and signed, because any
+    # later plist edit would invalidate the provider signature — see
+    # xcframework_identifiers.sh. Leading hyphens are kept (CPython's own
+    # convention) so `_ssl` stays distinct from `ssl`.
+    framework_identifier=$(xcf_identifier_component "$framework")
     framework_identifier=${framework_identifier:-framework}
+    framework_identifier="dev.flet.python.$framework_identifier"
 
     # creating "iphoneos" framework
     fd=iphoneos/$framework.framework
@@ -141,7 +148,7 @@ create_xcframework_from_dylibs() {
     mv "$iphone_dir/$dylib_relative_path" $fd/$framework
     echo "Frameworks/$framework.framework/$framework" > "$iphone_dir/$dylib_without_ext.fwork"
     install_name_tool -id @rpath/$framework.framework/$framework $fd/$framework
-    create_plist $framework "org.python.$framework_identifier" $fd/Info.plist iphoneos
+    create_plist $framework "$framework_identifier" $fd/Info.plist iphoneos
     echo "$origin_prefix/$dylib_without_ext.fwork" > $fd/$framework.origin
 
     # copy privacy manifest if any
@@ -159,7 +166,7 @@ create_xcframework_from_dylibs() {
     rm "$simulator_arm64_dir/$dylib_without_ext".*.$dylib_ext
     rm "$simulator_x86_64_dir/$dylib_without_ext".*.$dylib_ext
     install_name_tool -id @rpath/$framework.framework/$framework $fd/$framework
-    create_plist $framework "org.python.$framework_identifier" $fd/Info.plist iphonesimulator
+    create_plist $framework "$framework_identifier" $fd/Info.plist iphonesimulator
     echo "$origin_prefix/$dylib_without_ext.fwork" > $fd/$framework.origin
 
     # copy privacy manifest if any

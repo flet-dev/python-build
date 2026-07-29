@@ -62,6 +62,41 @@ Releases are date-keyed (`YYYYMMDD`) and cut manually:
 A push without a `release_date` still exercises the full matrix but publishes no
 release (per-job artifacts only).
 
+### Apple XCFramework signing
+
+Every `.xcframework` in the Darwin tarballs is provider-signed with the Flet
+publishing team's Apple Distribution identity and a secure timestamp.
+
+This matters because Xcode records the state of each `.xcframework` an app links
+against **as its publisher shipped it**, and writes the result into the IPA as
+`Signatures/<name>.xcframework-ios.signature`. Unsigned artifacts make those
+receipts read `signed = false` / `isSecureTimestamp = false`, which Apple's App
+Store scan reports as `ITMS-91065: Missing signature`. The app's own signature is
+a separate thing and does not fill it in.
+
+Signing runs in `sign-darwin-artifacts`, a release-only job gated on a
+`workflow_dispatch` with a `release_date` **from `main`**, using the protected
+`release-signing` environment. It downloads the finished Darwin archives, signs
+every xcframework inside them, re-packs, and re-verifies after extraction — so the
+certificate is never present in the build matrix that runs on pushes and PRs,
+while the "sign only after every mutation" ordering is still guaranteed.
+
+The unsigned build artifacts are named `darwin-unsigned-*` rather than
+`python-darwin-*` specifically so that no `python-*` download pattern in the
+publish job can reach them. `publish-release` downloads Android/Linux/Windows
+artifacts by explicit pattern plus the `python-darwin-signed` bundle, and fails if
+the expected Darwin tarballs are absent.
+
+Framework bundle identifiers are assigned here, before signing, and are
+publisher-owned and stable: `dev.flet.python.runtime` for the runtime and
+`dev.flet.python.<module>` for each stdlib extension. They must not depend on the
+consuming app — see `darwin/xcframework_identifiers.sh`, which validates that they
+are unique, syntactically valid, and consistent across device and simulator slices.
+
+Local builds without signing credentials still work and produce unsigned artifacts;
+`REQUIRE_XCFRAMEWORK_SIGNATURE=1` (set on the release path) turns every missing
+credential, missing timestamp, wrong team, or empty archive into a hard failure.
+
 ## Consumers
 
 - **serious_python** pins a release date, fetches that release's `manifest.json`,

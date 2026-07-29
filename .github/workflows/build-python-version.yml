@@ -58,6 +58,14 @@ jobs:
           # iOS/README.rst, 3.12 uses beeware. Emits normalized ./install + ./support.
           python build_ios.py "$PYTHON_VERSION"
 
+          # build_ios.py mutates the CPython-created Python.xcframework after assembly
+          # (sysconfigdata rewrites, `strip -x` of every slice binary), so this is the
+          # first moment the bundle is final. Give it its stable provider identifier
+          # here — the release signing job seals it, and a plist edit afterwards would
+          # invalidate that seal.
+          bash ./xcframework_identifiers.sh set \
+            "support/$PYTHON_VERSION_SHORT/iOS/Python.xcframework" dev.flet.python.runtime
+
           # mobile-forge artifact: iOS-only install+support tree (same structure as before).
           # Captured before the macOS build also writes into ./support / ./install.
           tar -czf dist/python-ios-mobile-forge-$PYTHON_VERSION.tar.gz install support
@@ -73,10 +81,15 @@ jobs:
           bash ./package-ios-for-dart.sh . "$PYTHON_VERSION"
           bash ./package-macos-for-dart.sh . "$PYTHON_VERSION"
 
-      - name: Upload Darwin build artifacts
+      # Deliberately NOT named `python-darwin-*`: the XCFrameworks in these
+      # tarballs are unsigned, and the publish job selects release assets with
+      # `python-*` patterns. Keeping the unsigned Darwin build outside that
+      # namespace makes it structurally impossible for it to be published by
+      # accident — sign-darwin-artifacts re-emits them as `python-darwin-signed`.
+      - name: Upload Darwin build artifacts (unsigned)
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: python-darwin-${{ env.PYTHON_VERSION }}
+          name: darwin-unsigned-${{ env.PYTHON_VERSION }}
           path: darwin/dist/python-*.tar.gz
           if-no-files-found: error
 
