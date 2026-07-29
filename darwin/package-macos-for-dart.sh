@@ -6,6 +6,9 @@ python_version=${2:?}
 
 script_dir=$(dirname $(realpath $0))
 
+# shellcheck source=darwin/xcframework_identifiers.sh
+. "$script_dir/xcframework_identifiers.sh"
+
 # build short Python version
 read python_version_major python_version_minor < <(echo $python_version | sed -E 's/^([0-9]+)\.([0-9]+).*/\1 \2/')
 python_version_short=$python_version_major.$python_version_minor
@@ -37,6 +40,14 @@ cp -r $python_apple_support_root/support/$python_version_short/macOS/Python.xcfr
 # The built-in modulemap (if the source framework shipped one) is replaced by the
 # overlaid darwin/Modules/module.modulemap above; -f tolerates builds without one.
 rm -f $frameworks_dir/Python.xcframework/macos-arm64_x86_64/Python.framework/Headers/module.modulemap
+
+# Last mutation of the bundle: stable, provider-owned identifier for the Python
+# runtime, replacing CPython's shared `org.python.python`. The macOS framework is
+# versioned, so this writes Versions/<short>/Resources/Info.plist and leaves the
+# nested Python.app's own identifier alone. Must precede signing — see
+# xcframework_identifiers.sh.
+xcf_set_framework_identifier "$frameworks_dir/Python.xcframework" "$XCF_PYTHON_RUNTIME_IDENTIFIER"
+xcf_validate_identifiers "$frameworks_dir"
 
 # copy stdlibs
 rsync -av --exclude-from=$script_dir/python-darwin-stdlib.exclude $python_apple_support_root/install/macOS/macosx/python-*/Python.framework/Versions/Current/lib/python$python_version_short/* $stdlib_dir
