@@ -146,7 +146,39 @@ xcf_signing_identifier() {
     return 1
 }
 
-# Sign one completed outer XCFramework.
+# Emit the per-slice <Name>.framework bundles inside an xcframework.
+xcf_slice_frameworks() {
+    local xcf=$1
+    local name
+    name=$(basename "$xcf" .xcframework)
+
+    local slice
+    for slice in "$xcf"/*/; do
+        [ -d "$slice$name.framework" ] && printf '%s\n' "$slice$name.framework"
+    done
+    return 0
+}
+
+# Sign one completed outer XCFramework — inner frameworks first, outer last.
+#
+# WHY BOTH LAYERS
+#   Signing only the outer bundle is not enough. Compare against a third-party
+#   XCFramework Apple's App Store scan demonstrably accepts
+#   (github.com/krzyzanowskim/OpenSSL): every one of its ten slices carries its
+#   own Apple Distribution signature with a secure timestamp, and the outer
+#   bundle is signed afterwards. Our artifacts previously had unsigned inner
+#   frameworks, and their IPA receipts came back `signed = true` but
+#   `isSecureTimestamp = false` — the one structural difference between the two.
+#
+#   Order matters and is not optional: the outer seal hashes the bundle contents,
+#   so the inner signatures have to exist before it is computed. Signing an inner
+#   framework afterwards would invalidate the outer seal, which is the same
+#   mistake this whole effort exists to stop making.
+#
+#   `xcodebuild -create-xcframework` preserves inner `_CodeSignature`
+#   directories, so a producer may equally sign the .framework bundles before
+#   assembling the xcframework; doing it here keeps one code path for both the
+#   build-time and the sign-the-finished-archive callers.
 xcf_sign_one() {
     local xcf=$1
     [ -d "$xcf" ] || { xcf_err "not a directory: $xcf"; return 1; }
@@ -158,44 +190,55 @@ xcf_sign_one() {
         return 1
     fi
 
-    local args=(--force --timestamp -i "$ident" --sign "$XCFRAMEWORK_CODESIGN_IDENTITY")
+    local args=(--force --timestamp --sign "$XCFRAMEWORK_CODESIGN_IDENTITY")
     [ -n "${XCFRAMEWORK_SIGNING_KEYCHAIN:-}" ] && args+=(--keychain "$XCFRAMEWORK_SIGNING_KEYCHAIN")
 
-    xcf_log "signing $xcf as $ident"
-    # Deliberately no --deep: it re-signs nested code with the outer options and
-    # is documented by Apple as inappropriate for producing a distributable
-    # signature. Deliberately no --timestamp=none: the receipt's
-    # isSecureTimestamp is exactly what we are here to make true.
-    codesign "${args[@]}" "$xcf" || { xcf_err "codesign failed for $xcf"; return 1; }
-}
+    # Deliberately no --deep anywhere below: it re-signs nested code with the
+    # outer bundle's options and is documented by Apple as inappropriate for
+    # producing a distributable signature. Signing each slice explicitly is the
+    # supported way to get the same coverage. Deliberately no --timestamp=none:
+    # the receipt's isSecureTimestamp is exactly what we are here to make true.
+    local fw count=0
+    while IFS= read -r fw; do
+        [ -n "$fw" ] || continue
+        # No -i for the inner bundles: a .framework has a real CFBundleIdentifier
+        # in its own Info.plist, which codesign picks up.
+        codesign "${args[@]}" "$fw" || { xcf_err "codesign failed for $fw"; return 1; }
+        count=$((count + 1))
+    done <<EOF
+$(xcf_slice_frameworks "$xcf")
+EOF
 
-# Verify one outer XCFramework carries a real provider signature.
-xcf_verify_one() {
-    local xcf=$1
-    local expect_team=${XCFRAMEWORK_EXPECTED_TEAM_ID:-}
-    local expect_authority=${XCFRAMEWORK_EXPECTED_AUTHORITY:-Apple Distribution}
-
-    if [ ! -f "$xcf/_CodeSignature/CodeResources" ]; then
-        xcf_err "$xcf: no outer _CodeSignature/CodeResources — the XCFramework is unsigned"
+    if [ "$count" -eq 0 ]; then
+        xcf_err "$xcf: no slice frameworks found to sign"
         return 1
     fi
 
-    if ! codesign --verify --strict --verbose=4 "$xcf" 2>&1; then
-        xcf_err "$xcf: codesign --verify --strict failed"
+    xcf_log "signing $xcf as $ident ($count slice framework(s) + outer)"
+    codesign "${args[@]}" -i "$ident" "$xcf" || { xcf_err "codesign failed for $xcf"; return 1; }
+}
+
+# Assert one signed bundle (inner framework or outer xcframework) carries a real
+# provider signature: verifiable, not ad-hoc, securely timestamped, right
+# authority, right team.
+xcf_assert_signature() {
+    local target=$1
+    local expect_team=${XCFRAMEWORK_EXPECTED_TEAM_ID:-}
+    local expect_authority=${XCFRAMEWORK_EXPECTED_AUTHORITY:-Apple Distribution}
+
+    if ! codesign --verify --strict --verbose=4 "$target" 2>&1; then
+        xcf_err "$target: codesign --verify --strict failed"
         return 1
     fi
 
     local info
-    if ! info=$(codesign -dvvv "$xcf" 2>&1); then
-        xcf_err "$xcf: codesign -dvvv failed: $info"
+    if ! info=$(codesign -dvvv "$target" 2>&1); then
+        xcf_err "$target: codesign -dvvv failed: $info"
         return 1
     fi
-    printf '%s\n' "$info"
 
-    # An ad-hoc signature satisfies --verify but carries no identity at all, so
-    # it would sail past the checks below if they were the only ones.
     if printf '%s\n' "$info" | grep -q '^Signature=adhoc'; then
-        xcf_err "$xcf: ad-hoc signature; a release artifact needs a real identity"
+        xcf_err "$target: ad-hoc signature; a release artifact needs a real identity"
         return 1
     fi
 
@@ -203,12 +246,12 @@ xcf_verify_one() {
     # --timestamp reports `Signed Time=` instead, which is self-asserted and is
     # what makes an IPA receipt report isSecureTimestamp = false.
     if ! printf '%s\n' "$info" | grep -q '^Timestamp='; then
-        xcf_err "$xcf: no secure timestamp (signed without --timestamp?)"
+        xcf_err "$target: no secure timestamp (signed without --timestamp?)"
         return 1
     fi
 
     if ! printf '%s\n' "$info" | grep '^Authority=' | grep -qF "$expect_authority"; then
-        xcf_err "$xcf: no '$expect_authority' authority in the signature chain"
+        xcf_err "$target: no '$expect_authority' authority in the signature chain"
         return 1
     fi
 
@@ -216,10 +259,47 @@ xcf_verify_one() {
         local actual_team
         actual_team=$(printf '%s\n' "$info" | sed -n 's/^TeamIdentifier=//p' | head -1)
         if [ "$actual_team" != "$expect_team" ]; then
-            xcf_err "$xcf: TeamIdentifier '$actual_team' != expected '$expect_team'"
+            xcf_err "$target: TeamIdentifier '$actual_team' != expected '$expect_team'"
             return 1
         fi
     fi
+}
+
+# Verify one XCFramework carries real provider signatures on BOTH layers.
+xcf_verify_one() {
+    local xcf=$1
+
+    if [ ! -f "$xcf/_CodeSignature/CodeResources" ]; then
+        xcf_err "$xcf: no outer _CodeSignature/CodeResources — the XCFramework is unsigned"
+        return 1
+    fi
+
+    # Every slice's framework must be signed in its own right. An unsigned inner
+    # bundle is what produced `isSecureTimestamp = false` receipts even though the
+    # outer seal was valid — see xcf_sign_one.
+    local fw count=0
+    while IFS= read -r fw; do
+        [ -n "$fw" ] || continue
+        if [ ! -d "$fw/_CodeSignature" ] && [ ! -d "$fw/Versions/A/_CodeSignature" ]; then
+            xcf_err "$fw: inner framework is unsigned"
+            return 1
+        fi
+        xcf_assert_signature "$fw" >/dev/null || return 1
+        count=$((count + 1))
+    done <<EOF
+$(xcf_slice_frameworks "$xcf")
+EOF
+
+    if [ "$count" -eq 0 ]; then
+        xcf_err "$xcf: no slice frameworks found to verify"
+        return 1
+    fi
+
+    xcf_assert_signature "$xcf" || return 1
+
+    local info
+    info=$(codesign -dvvv "$xcf" 2>&1) || info=""
+    printf '%s\n' "$info"
 
     # The outer seal must name the same provider-owned identifier as the inner
     # framework. A mismatch means the bundle was re-signed by something that did
