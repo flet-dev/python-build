@@ -65,7 +65,17 @@ release (per-job artifacts only).
 ### Apple XCFramework signing
 
 Every `.xcframework` in the Darwin tarballs is provider-signed with the Flet
-publishing team's Apple Distribution identity and a secure timestamp.
+publishing team's Apple Distribution identity and a secure timestamp — **both the
+inner `.framework` bundles in each slice and the outer xcframework**, in that
+order.
+
+Signing only the outer bundle is not enough: an IPA built against such an
+artifact reports `signed = true` but `isSecureTimestamp = false`. Every slice of
+an XCFramework Apple's App Store scan demonstrably accepts
+([krzyzanowskim/OpenSSL](https://github.com/krzyzanowskim/OpenSSL)) carries its
+own signature, with the outer bundle signed last. The order matters — the outer
+seal hashes the bundle contents, so signing an inner framework afterwards
+invalidates it.
 
 This matters because Xcode records the state of each `.xcframework` an app links
 against **as its publisher shipped it**, and writes the result into the IPA as
