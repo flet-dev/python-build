@@ -124,16 +124,13 @@ xcf_find() {
 # depends on the consuming application.
 xcf_signing_identifier() {
     local xcf=$1
-    local name plist ident
-    name=$(basename "$xcf" .xcframework)
+    local fw plist ident
 
-    local slice
-    for slice in "$xcf"/*/; do
-        [ -d "$slice$name.framework" ] || continue
+    while IFS= read -r fw; do
+        [ -n "$fw" ] || continue
         # Flat (iOS) layout, then versioned (macOS). Versions/Current is a
         # symlink to the real version directory, so skip it.
-        for plist in "$slice$name.framework/Info.plist" \
-                     "$slice$name.framework"/Versions/*/Resources/Info.plist; do
+        for plist in "$fw/Info.plist" "$fw"/Versions/*/Resources/Info.plist; do
             [ -f "$plist" ] || continue
             case "$plist" in */Versions/Current/*) continue ;; esac
             ident=$(plutil -extract CFBundleIdentifier raw -o - "$plist" 2>/dev/null) || continue
@@ -142,19 +139,27 @@ xcf_signing_identifier() {
                 return 0
             fi
         done
-    done
+    done <<EOF
+$(xcf_slice_frameworks "$xcf")
+EOF
     return 1
 }
 
-# Emit the per-slice <Name>.framework bundles inside an xcframework.
+# Emit the per-slice .framework bundles inside an xcframework.
+#
+# Found by globbing each slice directory rather than by assuming the framework is
+# named after the xcframework. The two normally match, but a consumer may stage a
+# copy under a different name -- serious_python renames Python.xcframework to
+# Python-<platform>.xcframework -- and a name-keyed lookup silently finds nothing
+# there, which would let an unsigned slice pass as "no slices to check".
 xcf_slice_frameworks() {
     local xcf=$1
-    local name
-    name=$(basename "$xcf" .xcframework)
-
-    local slice
+    local slice fw
     for slice in "$xcf"/*/; do
-        [ -d "$slice$name.framework" ] && printf '%s\n' "$slice$name.framework"
+        [ -d "$slice" ] || continue
+        for fw in "$slice"*.framework; do
+            [ -d "$fw" ] && printf '%s\n' "$fw"
+        done
     done
     return 0
 }
