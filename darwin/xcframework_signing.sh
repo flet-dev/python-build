@@ -285,7 +285,12 @@ xcf_verify_one() {
     local fw count=0
     while IFS= read -r fw; do
         [ -n "$fw" ] || continue
-        if [ ! -d "$fw/_CodeSignature" ] && [ ! -d "$fw/Versions/A/_CodeSignature" ]; then
+        # `codesign -dv` rather than probing for a _CodeSignature directory: a
+        # versioned bundle keeps it at Versions/<name>/_CodeSignature, and the
+        # version directory is not always "A" (CPython's macOS framework uses the
+        # Python version, e.g. Versions/3.14). codesign exits non-zero with
+        # "code object is not signed at all", which is the question being asked.
+        if ! codesign -dv "$fw" >/dev/null 2>&1; then
             xcf_err "$fw: inner framework is unsigned"
             return 1
         fi
