@@ -12,9 +12,19 @@ Lib/lib2to3
 Lib/site-packages/pip*
 Lib/site-packages/setuptools*
 Lib/site-packages/wheel*
+# profiling (new in 3.15): cProfile imports profiling.tracing at module load, so the
+# package itself must stay. The sampling profiler's web-report assets (vendored d3 JS,
+# logos, CSS/HTML templates, ~690KB that would survive .py deletion) are pure dead
+# weight embedded; pruning them only degrades report generation, not `import profiling`.
+Lib/profiling/sampling/_vendor
+Lib/profiling/sampling/_assets
+Lib/profiling/sampling/_flamegraph_assets
+Lib/profiling/sampling/_heatmap_assets
+Lib/profiling/sampling/_shared_assets
 # Interactive-REPL / dev-only modules + easter eggs / frozen demos.
 # _pyrepl is intentionally NOT pruned: CPython 3.14's pydoc and pdb import it at
-# module load, so dropping it breaks pydoc / pdb / pytest / anything that imports them.
+# module load (3.15 made those imports guarded, but we keep it so pydoc / pdb /
+# pytest keep full functionality).
 Lib/rlcompleter.py
 Lib/tabnanny.py
 Lib/antigravity.py
@@ -30,6 +40,10 @@ DLLs/xxlimited*.pyd
 DLLs/xxsubtype*.pyd
 DLLs/tcl86t.dll
 DLLs/tk86t.dll
+# Tcl/Tk 9 names (3.15+ builds Tcl 9): tcl90.dll, tcl9tk90.dll + its libtommath.
+DLLs/tcl90*.dll
+DLLs/tcl9tk90*.dll
+DLLs/libtommath.dll
 DLLs/zlib1.dll
 DLLs/pyshellext.dll
 DLLs/pyshellext_d.dll

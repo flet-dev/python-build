@@ -18,10 +18,20 @@ lib/python*/test
 lib/python*/tkinter
 lib/python*/turtle*
 lib/python*/wsgiref
+# profiling (new in 3.15): cProfile imports profiling.tracing at module load, so the
+# package itself must stay. The sampling profiler's web-report assets (vendored d3 JS,
+# logos, CSS/HTML templates, ~690KB that would survive .py deletion) are pure dead
+# weight embedded; pruning them only degrades report generation, not `import profiling`.
+lib/python*/profiling/sampling/_vendor
+lib/python*/profiling/sampling/_assets
+lib/python*/profiling/sampling/_flamegraph_assets
+lib/python*/profiling/sampling/_heatmap_assets
+lib/python*/profiling/sampling/_shared_assets
 # Interactive-REPL / dev-only modules + easter eggs / frozen demos (never imported when
 # running a script in embedded mode). Globs catch the .pyc too (sources go via *.py above).
 # _pyrepl is intentionally NOT pruned: CPython 3.14's pydoc and pdb import it at module
-# load, so dropping it breaks pydoc / pdb / pytest / anything that imports them.
+# load (3.15 made those imports guarded, but we keep it so pydoc / pdb / pytest keep
+# full functionality).
 lib/python*/rlcompleter*
 lib/python*/tabnanny*
 lib/python*/antigravity*

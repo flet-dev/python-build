@@ -29,14 +29,25 @@ $keepImportLibs = @("python3.lib", "python3_d.lib", "python$pythonTag.lib", "pyt
 
 New-Item -ItemType Directory -Force -Path $srcRoot | Out-Null
 
+# python.org hosts pre-releases under the bare X.Y.Z directory
+# (e.g. ftp/python/3.15.0/Python-3.15.0rc1.tgz).
+$pythonVersionNoPre = [regex]::Match($PythonVersion, '^\d+\.\d+\.\d+').Value
+
 Write-Host "Downloading CPython source $PythonVersion"
-Invoke-WebRequest -Uri "https://www.python.org/ftp/python/$PythonVersion/Python-$PythonVersion.tgz" -OutFile $srcArchive
+Invoke-WebRequest -Uri "https://www.python.org/ftp/python/$pythonVersionNoPre/Python-$PythonVersion.tgz" -OutFile $srcArchive
 tar -xf $srcArchive -C $srcRoot
 
 # Force PCbuild helper scripts to use configured Python, not py.exe launcher.
 $pythonFromPath = (Get-Command python).Source
 if (-not $pythonFromPath) {
   throw "python was not found in PATH"
+}
+
+# The stdlib is bytecode-compiled with this host interpreter below; .pyc magic
+# (and, since 3.15, `lazy import` syntax) requires the SAME minor as the target.
+$hostShort = & $pythonFromPath -c "import sys; print('%d.%d' % sys.version_info[:2])"
+if ($hostShort -ne $PythonVersionShort) {
+  throw "Host python is $hostShort but the target is $PythonVersionShort; a matching host minor is required for compileall."
 }
 $env:PYTHON = $pythonFromPath
 $env:PYTHON_FOR_BUILD = $pythonFromPath
@@ -108,7 +119,9 @@ foreach ($name in @("vcruntime140.dll", "vcruntime140_1.dll")) {
 # Extension modules and supporting DLLs.
 Get-ChildItem -Path $pcbuildDir -Filter "*.pyd" -File | Copy-Item -Destination "$packageRoot\DLLs" -Force
 Get-ChildItem -Path $pcbuildDir -Filter "*.dll" -File |
-  Where-Object { $_.Name -notin @("python3.dll", "python3_d.dll", "python$pythonTag.dll", "python${pythonTag}_d.dll", "vcruntime140.dll", "vcruntime140_1.dll") } |
+  Where-Object { $_.Name -notin @("python3.dll", "python3_d.dll", "python$pythonTag.dll", "python${pythonTag}_d.dll", "vcruntime140.dll", "vcruntime140_1.dll",
+                                  # 3.15+ stable-ABI stubs for the free-threaded build; python3XXt.dll is never built here, so these would dangle.
+                                  "python3t.dll", "python3t_d.dll") } |
   Copy-Item -Destination "$packageRoot\DLLs" -Force
 foreach ($name in $keepImportLibs) {
   $src = Join-Path $pcbuildDir $name
@@ -134,6 +147,11 @@ foreach ($pattern in $excludePatterns) {
 
 # Match existing packaging behavior: bytecode-only stdlib.
 & $pythonFromPath -I -m compileall -b "$packageRoot\Lib"
+# Native exit codes don't trip $ErrorActionPreference; check explicitly, or a
+# failed compileall would be followed by deleting every .py (corrupt package).
+if ($LASTEXITCODE -ne 0) {
+  throw "compileall failed with exit code $LASTEXITCODE"
+}
 Get-ChildItem -Path "$packageRoot\Lib" -Recurse -File -Include *.py,*.typed | Remove-Item -Force
 Get-ChildItem -Path "$packageRoot\Lib" -Recurse -Directory -Filter __pycache__ | Remove-Item -Recurse -Force
 

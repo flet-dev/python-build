@@ -29,16 +29,13 @@ curl -OL "$DIST_URL"
 mkdir -p $PYTHON_ARCH/build
 tar zxvf $DIST_FILE -C $PYTHON_ARCH/build
 
-# compile lib
+# compile lib — the host interpreter MUST match the target minor: .pyc magic
+# differs per minor, and since 3.15 the stdlib uses `lazy import` syntax that
+# older hosts cannot even parse (compileall would SyntaxError). No fallback to
+# a random python3/python: fail loudly instead of packaging broken bytecode.
 build_python=$(command -v "python$PYTHON_VERSION_SHORT" || true)
 if [ -z "$build_python" ]; then
-    build_python=$(command -v python3 || true)
-fi
-if [ -z "$build_python" ]; then
-    build_python=$(command -v python || true)
-fi
-if [ -z "$build_python" ]; then
-    echo "Host Python interpreter not found for compileall"
+    echo "Host python$PYTHON_VERSION_SHORT not found for compileall (a matching minor is required)"
     exit 1
 fi
 "$build_python" -I -m compileall -b "$PYTHON_ARCH/build/python/lib/python$PYTHON_VERSION_SHORT"
