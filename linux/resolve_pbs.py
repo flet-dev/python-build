@@ -21,6 +21,7 @@ import argparse
 import json
 import os
 import sys
+import time
 import urllib.error
 import urllib.request
 
@@ -31,7 +32,10 @@ DL = f"https://github.com/{REPO}/releases/download"
 # PBS has a very long release history. A target micro that we'd ship is always recent,
 # so bound the newest-first fallback scan rather than crawling every page (which both
 # burns rate limit and risks gateway timeouts when the asset genuinely doesn't exist).
-MAX_FALLBACK_PAGES = 5  # 5 * 100 = 500 most-recent releases
+# Small pages on purpose: each PBS release carries hundreds of assets, and big
+# release-list payloads are exactly what the GitHub API 504s on when degraded.
+PER_PAGE = 20
+MAX_FALLBACK_PAGES = 10  # 10 * 20 = 200 most-recent releases
 
 
 def asset_name(version: str, arch: str, arch_ver: str, release: str) -> str:
@@ -42,15 +46,28 @@ def asset_name(version: str, arch: str, arch_ver: str, release: str) -> str:
     )
 
 
-def _get(url: str) -> bytes:
+def _get(url: str, attempts: int = 4) -> bytes:
     req = urllib.request.Request(url)
     req.add_header("Accept", "application/vnd.github+json")
     req.add_header("X-GitHub-Api-Version", "2022-11-28")
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
     if token:
         req.add_header("Authorization", f"Bearer {token}")
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        return resp.read()
+    for attempt in range(1, attempts + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                return resp.read()
+        except urllib.error.HTTPError as exc:
+            # The GitHub API 504s/503s transiently under load (seen taking down
+            # whole CI runs); retry those with backoff. Other 4xx are real
+            # answers the callers handle — surface them immediately.
+            if exc.code not in (429, 500, 502, 503, 504) or attempt == attempts:
+                raise
+        except (urllib.error.URLError, TimeoutError):
+            if attempt == attempts:
+                raise
+        time.sleep(2**attempt)
+    raise AssertionError("unreachable")
 
 
 def _find_in_release(release: dict, version: str, arch: str, arch_ver: str) -> str | None:
@@ -74,7 +91,7 @@ def resolve(version: str, arch: str, arch_ver: str) -> str:
 
     # Fall back to paging newest-first (bounded) until we find a release with the asset.
     for page in range(1, MAX_FALLBACK_PAGES + 1):
-        releases = json.loads(_get(f"{API}?per_page=100&page={page}"))
+        releases = json.loads(_get(f"{API}?per_page={PER_PAGE}&page={page}"))
         if not releases:
             break
         for release in releases:  # API returns newest-first
@@ -85,7 +102,7 @@ def resolve(version: str, arch: str, arch_ver: str) -> str:
     raise SystemExit(
         f"No python-build-standalone asset found for "
         f"{asset_name(version, arch, arch_ver, '<release>')} "
-        f"in the {MAX_FALLBACK_PAGES * 100} most-recent releases."
+        f"in the {MAX_FALLBACK_PAGES * PER_PAGE} most-recent releases."
     )
 
 

@@ -191,6 +191,18 @@ jobs:
           # Lets resolve_pbs.py authenticate to the GitHub API and avoid rate limits.
           GITHUB_TOKEN: ${{ github.token }}
         run: |
+          # Pin the PBS release from the manifest (single source of truth) so
+          # resolve_pbs.py needs no API calls at all — the newest PBS release
+          # no longer carries our pinned micros once upstream bumps them, and
+          # the release-listing API 504s when degraded (took down this lane).
+          # An empty/missing manifest field falls back to auto-resolution, and
+          # a workflow-level PYTHON_DIST_RELEASE override still wins.
+          if [ -z "${PYTHON_DIST_RELEASE:-}" ]; then
+            PYTHON_DIST_RELEASE=$(jq -r --arg v "$PYTHON_VERSION_SHORT" \
+              '.pythons[$v].standalone_release_date // empty' ../manifest.json)
+            export PYTHON_DIST_RELEASE
+            echo "PBS release from manifest: ${PYTHON_DIST_RELEASE:-<none, auto-resolve>}"
+          fi
           bash ./package-for-linux.sh x86_64 "_v2"
           bash ./package-for-linux.sh aarch64 ""
 
