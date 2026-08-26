@@ -2,9 +2,11 @@
 """Build iOS ``Python.xcframework`` + per-arch installs using CPython's standard Apple tool.
 
 Every supported version is built with the **same** mechanism — CPython's in-tree
-``Apple`` build package (``python Apple build iOS``):
+Apple build package (``python Apple build iOS``; since 3.15 the package lives at
+``Platforms/Apple``, so it becomes ``python Platforms/Apple build iOS``):
 
-* **3.14+** — the ``Apple/`` tooling is native; build straight from the source tarball.
+* **3.15+** — native tooling at ``Platforms/Apple/``; build straight from the source tarball.
+* **3.14** — native tooling at the old ``Apple/`` location; same flow.
 * **3.13 / 3.12** — the tooling (and, for 3.12, the PEP 730 iOS runtime) isn't upstream yet,
   so we first apply a vendored back-port patch (``ios_patches/<short>/Python.patch``) that
   adds it, then run the identical ``python Apple build iOS``. No dependency on beeware's
@@ -94,9 +96,14 @@ def build(
     build_dir: Path,
     patches_dir: Path,
 ) -> None:
+    # python.org hosts pre-releases under the bare X.Y.Z directory
+    # (e.g. ftp/python/3.15.0/Python-3.15.0rc1.tgz), so strip any rc/a/b suffix
+    # from the directory segment only.
+    version_no_pre = re.match(r"\d+\.\d+\.\d+", version).group(0)
     tarball = downloads / f"Python-{version}.tgz"
     download(
-        f"https://www.python.org/ftp/python/{version}/Python-{version}.tgz", tarball
+        f"https://www.python.org/ftp/python/{version_no_pre}/Python-{version}.tgz",
+        tarball,
     )
 
     src = build_dir / f"Python-{version}"
@@ -168,7 +175,10 @@ def build(
     # own C deps, and emits cross-build/iOS/Python.xcframework. `build` does not run the
     # (device/simulator) testbed.
     host_python = shutil.which("python3") or sys.executable
-    run([host_python, "Apple", "build", "iOS"], cwd=src, env=env)
+    # 3.15 moved the Apple build package from Apple/ to Platforms/Apple/
+    # (CLI surface and output layout unchanged).
+    apple_pkg = "Platforms/Apple" if minor >= 15 else "Apple"
+    run([host_python, apple_pkg, "build", "iOS"], cwd=src, env=env)
 
     reshape(version, short, src, root)
 

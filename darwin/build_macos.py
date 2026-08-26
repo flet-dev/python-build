@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import os
 import platform
+import re
 import shutil
 import subprocess
 import sys
@@ -328,8 +329,15 @@ def build_python_framework(
     jobs: int,
 ) -> Path:
     """Configure + build + install a universal2 framework. Returns the Python.framework path."""
+    # python.org hosts pre-releases under the bare X.Y.Z directory
+    # (e.g. ftp/python/3.15.0/Python-3.15.0rc1.tgz), so strip any rc/a/b suffix
+    # from the directory segment only.
+    version_no_pre = re.match(r"\d+\.\d+\.\d+", version).group(0)
     tarball = downloads / f"Python-{version}.tgz"
-    download(f"https://www.python.org/ftp/python/{version}/Python-{version}.tgz", tarball)
+    download(
+        f"https://www.python.org/ftp/python/{version_no_pre}/Python-{version}.tgz",
+        tarball,
+    )
 
     src = build_dir / f"Python-{version}"
     if src.exists():
@@ -359,6 +367,13 @@ def build_python_framework(
             f"LIBZSTD_CFLAGS=-I{zstd_prefix}/include",
             f"LIBZSTD_LIBS=-L{zstd_prefix}/lib -lzstd",
         ]
+    # Use the bundled libmpdec explicitly. Before 3.15, configure silently fell
+    # back to it when no system mpdecimal was found (our CLEAN_PATH hides brew /
+    # /usr/local, so that was always the case); 3.15 removed that fallback and
+    # would silently skip the _decimal C extension instead. Same output on all
+    # minors, now stated explicitly. (3.16 drops the bundled sources entirely —
+    # a real mpdecimal build step will be needed then.)
+    configure.append("--with-system-libmpdec=no")
     # NOTE: --enable-optimizations (PGO+LTO) intentionally omitted for first bring-up —
     # it is slow and the profile task is finicky for universal2. Re-enable once green.
     configure.append("--without-ensurepip")
@@ -580,7 +595,14 @@ def main() -> None:
     )
 
     if args.app_store_compliance:
-        patch = script_dir / "macos_support" / "app-store-compliance.patch"
+        # 3.15 rewrote the test_urlparse.py hunk, so the patch is version-keyed:
+        # app-store-compliance-3.15.patch mirrors upstream Mac/Resources/.
+        patch_name = (
+            "app-store-compliance-3.15.patch"
+            if minor >= 15
+            else "app-store-compliance.patch"
+        )
+        patch = script_dir / "macos_support" / patch_name
         stdlib = framework / "Versions" / short / "lib" / f"python{short}"
         run(["patch", "--strip", "2", "--directory", stdlib, "--input", patch])
 

@@ -162,6 +162,17 @@ else
             ;;
     esac
 
+    # 3.15 moved the in-tree Android tooling from Android/ (android.py) to
+    # Platforms/Android/ (a package; `python3 Platforms/Android <cmd>`).
+    # Subcommands and output layout are unchanged.
+    if [ $version_int -ge 315 ]; then
+        android_tooling="Platforms/Android"
+        android_py() { python3 Platforms/Android "$@"; }
+    else
+        android_tooling="Android"
+        android_py() { Android/android.py "$@"; }
+    fi
+
     # CPython's Android tooling expects ANDROID_HOME and ANDROID_API_LEVEL.
     export ANDROID_API_LEVEL="$api_level"
     if [ -z "${ANDROID_HOME:-}" ]; then
@@ -176,22 +187,36 @@ else
     fi
 
     # Reuse already-installed NDK by exposing it at the location expected by
-    # CPython's Android/android-env.sh.
+    # CPython's android-env.sh (Android/ pre-3.15, Platforms/Android/ from 3.15).
     if [ -z "${NDK_HOME:-}" ] && [ -d "$HOME/ndk/r27d" ]; then
         export NDK_HOME="$HOME/ndk/r27d"
     fi
-    cpython_ndk_version=$(sed -n 's/^ndk_version=//p' Android/android-env.sh | head -n1)
+    cpython_ndk_version=$(sed -n 's/^ndk_version=//p' "$android_tooling/android-env.sh" | head -n1)
     if [ -n "${NDK_HOME:-}" ] && [ -d "$NDK_HOME" ] && [ -n "${cpython_ndk_version:-}" ]; then
         mkdir -p "$ANDROID_HOME/ndk"
         if [ ! -e "$ANDROID_HOME/ndk/$cpython_ndk_version" ]; then
             ln -s "$NDK_HOME" "$ANDROID_HOME/ndk/$cpython_ndk_version"
         fi
+        # 3.15's android-env.sh only accepts an NDK dir containing package.xml
+        # (sdkmanager's install marker) and otherwise re-installs via sdkmanager.
+        # A manually-unpacked NDK has no package.xml, so stamp an empty one to
+        # keep the reuse path working.
+        if [ ! -e "$ANDROID_HOME/ndk/$cpython_ndk_version/package.xml" ]; then
+            touch "$ANDROID_HOME/ndk/$cpython_ndk_version/package.xml" 2>/dev/null || true
+        fi
     fi
 
-    Android/android.py configure-build
-    Android/android.py make-build
-    Android/android.py configure-host "$HOST"
-    Android/android.py make-host "$HOST"
+    android_py configure-build
+    android_py make-build
+    if [ $version_int -ge 315 ]; then
+        # 3.15 dropped configure's implicit bundled-libmpdec fallback; without a
+        # system mpdecimal (Android tooling ships none) the _decimal C extension
+        # would silently not be built. Force the bundled copy.
+        android_py configure-host "$HOST" -- --with-system-libmpdec=no
+    else
+        android_py configure-host "$HOST"
+    fi
+    android_py make-host "$HOST"
     cp -a "cross-build/$HOST/prefix/"* "$PREFIX"
 
     # CPython's official Android tooling builds OpenSSL/bzip2/libffi/xz/sqlite
