@@ -25,6 +25,14 @@
       "pyodide_platform_tag": "pyemscripten-2026.0-wasm32",
       "android_abis": ["arm64-v8a", "x86_64", "armeabi-v7a"],
       "prerelease": false
+    },
+    "3.15": {
+      "full_version": "3.15.0rc1",
+      "standalone_release_date": "20260825",
+      "pyodide_version": "315.0.0a2",
+      "pyodide_platform_tag": "pyemscripten-2026.5-wasm32",
+      "android_abis": ["arm64-v8a", "x86_64", "armeabi-v7a"],
+      "prerelease": true
     }
   }
 }

@@ -77,11 +77,11 @@ def _resolve(data: dict, path: tuple[str, ...]):
 
 
 @post_build
-@requires_python("3.14")
+@requires_python("3.14", "3.15")
 class BuiltBuildDetailsJsonShape(unittest.TestCase):
     """The shipped `build-details.json` must carry re-anchored paths.
 
-    Gated on 3.14: CPython didn't ship this file pre-3.14, so on 3.12/3.13
+    Gated on 3.14+: CPython didn't ship this file pre-3.14, so on 3.12/3.13
     shards there's nothing to inspect and the class skips wholesale.
     """
 
@@ -96,7 +96,7 @@ class BuiltBuildDetailsJsonShape(unittest.TestCase):
         cls.found = list(_build_details_files(cls.install_root))
 
     def test_at_least_one_build_details_json_present(self):
-        """Sanity: 3.14 matrix shards must ship a build-details.json per ABI.
+        """Sanity: 3.14+ matrix shards must ship a build-details.json per ABI.
 
         If absent, CPython's Android tooling silently regressed (or a recipe
         change in `android/build.sh` is dropping the file). Surface that
