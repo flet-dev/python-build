@@ -7284,7 +7284,7 @@ index 0df4751..cf32adf 100755
  fi
  ac_fn_c_check_func "$LINENO" "sigfillset" "ac_cv_func_sigfillset"
  if test "x$ac_cv_func_sigfillset" = xyes
-@@ -19363,11 +19547,11 @@ fi
+@@ -19376,11 +19560,11 @@ fi
  
  fi
  
@@ -7295,6 +7295,15 @@ index 0df4751..cf32adf 100755
  # raise an error if used at runtime. Force these symbols off.
 -if test "$ac_sys_system" != "iOS" ; then
 +if test "$ac_sys_system" != "iOS" -a "$ac_sys_system" != "tvOS" -a "$ac_sys_system" != "visionOS" -a "$ac_sys_system" != "watchOS" ; then
+   ac_fn_c_check_func "$LINENO" "getentropy" "ac_cv_func_getentropy"
+ if test "x$ac_cv_func_getentropy" = xyes
+ then :
+@@ -19403,7 +19587,7 @@ fi
+ # In addition, macOS introduced dup3 and pipe2 in macOS 27, late in the
+ # lifetime of this version of Python. Rather than adding weaklinking
+ # support for them, just continue to ignore them.
+-if test "$ac_sys_system" != "iOS" -a "$ac_sys_system" != "Darwin"; then
++if test "$ac_sys_system" != "iOS" -a "$ac_sys_system" != "Darwin" -a "$ac_sys_system" != "tvOS" -a "$ac_sys_system" != "visionOS" -a "$ac_sys_system" != "watchOS"; then
    ac_fn_c_check_func "$LINENO" "dup3" "ac_cv_func_dup3"
  if test "x$ac_cv_func_dup3" = xyes
  then :
@@ -7931,7 +7940,7 @@ index a016a43..698553b 100644
    sigfillset siginterrupt sigpending sigrelse sigtimedwait sigwait \
    sigwaitinfo snprintf splice strftime strlcpy strsignal symlinkat sync \
    sysconf tcgetpgrp tcsetpgrp tempnam timegm times tmpfile \
-@@ -5275,14 +5474,22 @@ if test "$MACHDEP" != linux; then
+@@ -5275,20 +5474,28 @@ if test "$MACHDEP" != linux; then
    AC_CHECK_FUNCS([lchmod])
  fi
  
@@ -7942,7 +7951,14 @@ index a016a43..698553b 100644
  # raise an error if used at runtime. Force these symbols off.
 -if test "$ac_sys_system" != "iOS" ; then
 +if test "$ac_sys_system" != "iOS" -a "$ac_sys_system" != "tvOS" -a "$ac_sys_system" != "visionOS" -a "$ac_sys_system" != "watchOS" ; then
-   AC_CHECK_FUNCS([dup3 getentropy getgroups pipe2 system])
+   AC_CHECK_FUNCS([getentropy getgroups system])
+ fi
+ # In addition, macOS introduced dup3 and pipe2 in macOS 27, late in the
+ # lifetime of this version of Python. Rather than adding weaklinking
+ # support for them, just continue to ignore them.
+-if test "$ac_sys_system" != "iOS" -a "$ac_sys_system" != "Darwin"; then
++if test "$ac_sys_system" != "iOS" -a "$ac_sys_system" != "Darwin" -a "$ac_sys_system" != "tvOS" -a "$ac_sys_system" != "visionOS" -a "$ac_sys_system" != "watchOS"; then
+   AC_CHECK_FUNCS([dup3 pipe2])
  fi
  
 +# tvOS/watchOS have some additional methods that can be found, but not used.
