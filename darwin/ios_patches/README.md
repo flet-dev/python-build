@@ -35,5 +35,13 @@ When that happens:
    built nor shipped — that is exactly why the 3.12 patch here has had its
    `Lib/test/test_genericpath.py` hunk removed for 3.12.13).
 
+The 3.12 patch also carries one fix that isn't about iOS: `Modules/_ssl.c` reads
+`ASN1_STRING` fields through `ASN1_STRING_length()` / `ASN1_STRING_get0_data()` instead of
+the struct members, as 3.13+ does upstream. OpenSSL 4 made `ASN1_STRING` opaque, and the
+native build-python that the Apple tool compiles first picks up whatever OpenSSL Homebrew
+links (`openssl@4` on current GitHub macOS runners), so without it the 3.12 build fails in
+`_ssl.c`. The accessors exist since OpenSSL 1.1.0, so the iOS slices (OpenSSL 3.x) are
+unaffected.
+
 A minor-version bump (e.g. adding 3.15) means refreshing from the corresponding upstream
 back-port branch.
