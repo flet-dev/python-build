@@ -7102,16 +7102,16 @@ index 0df4751..cf32adf 100755
  
  
  # checks for alternative programs
-@@ -4709,6 +4907,16 @@ case $ac_sys_system in #(
+@@ -4714,6 +4912,16 @@ case $host in #(
      as_fn_append CFLAGS " -mios-version-min=${IPHONEOS_DEPLOYMENT_TARGET}"
      as_fn_append LDFLAGS " -mios-version-min=${IPHONEOS_DEPLOYMENT_TARGET}"
     ;; #(
-+  tvOS) :
++  *-apple-tvos*) :
 +
 +    as_fn_append CFLAGS " -mtvos-version-min=${TVOS_DEPLOYMENT_TARGET}"
 +    as_fn_append LDFLAGS " -mtvos-version-min=${TVOS_DEPLOYMENT_TARGET}"
 +   ;; #(
-+  watchOS) :
++  *-apple-watchos*) :
 +
 +    as_fn_append CFLAGS " -mwatchos-version-min=${WATCHOS_DEPLOYMENT_TARGET}"
 +    as_fn_append LDFLAGS " -mwatchos-version-min=${WATCHOS_DEPLOYMENT_TARGET}"
@@ -7785,7 +7785,7 @@ index a016a43..698553b 100644
  
  # checks for alternative programs
  
-@@ -944,11 +1127,19 @@ AS_CASE([$host],
+@@ -944,15 +1127,25 @@ AS_CASE([$host],
    ],
  )
  
@@ -7793,17 +7793,23 @@ index a016a43..698553b 100644
 +dnl Add the compiler flag for the iOS/tvOS/watchOS minimum supported OS
 +dnl version. visionOS doesn't use an explicit -mxros-version-min option -
 +dnl it encodes the min version into the target triple.
- AS_CASE([$ac_sys_system],
-   [iOS], [
+ AS_CASE([$host],
+   [*-apple-ios*-simulator], [
+     AS_VAR_APPEND([CFLAGS], [" -mios-simulator-version-min=${IPHONEOS_DEPLOYMENT_TARGET}"])
+     AS_VAR_APPEND([LDFLAGS], [" -mios-simulator-version-min=${IPHONEOS_DEPLOYMENT_TARGET}"])
+   ],
+   [*-apple-ios*], [
      AS_VAR_APPEND([CFLAGS], [" -mios-version-min=${IPHONEOS_DEPLOYMENT_TARGET}"])
      AS_VAR_APPEND([LDFLAGS], [" -mios-version-min=${IPHONEOS_DEPLOYMENT_TARGET}"])
-+  ],[tvOS], [
+   ],
++  [*-apple-tvos*], [
 +    AS_VAR_APPEND([CFLAGS], [" -mtvos-version-min=${TVOS_DEPLOYMENT_TARGET}"])
 +    AS_VAR_APPEND([LDFLAGS], [" -mtvos-version-min=${TVOS_DEPLOYMENT_TARGET}"])
-+  ],[watchOS], [
++  ],
++  [*-apple-watchos*], [
 +    AS_VAR_APPEND([CFLAGS], [" -mwatchos-version-min=${WATCHOS_DEPLOYMENT_TARGET}"])
 +    AS_VAR_APPEND([LDFLAGS], [" -mwatchos-version-min=${WATCHOS_DEPLOYMENT_TARGET}"])
-   ],
++  ],
  )
  
 @@ -1136,6 +1327,9 @@ AC_MSG_CHECKING([for multiarch])

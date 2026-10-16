@@ -38,6 +38,11 @@ from pathlib import Path
 
 _LOG = None  # open file handle; set via set_log()
 
+# Minimum iOS version for every slice. Xcode 27 rejects deployment targets below 15.0,
+# and Flutter 3.47 / Flet 1.1.0 use the same floor. CPython's configure hardcodes
+# 13.0 as its default (see build()), so it's rewritten to this value.
+IOS_DEPLOYMENT_TARGET = "15.0"
+
 
 def set_log(path: Path) -> None:
     """Tee all subsequent run()/_emit output to a build log file."""
@@ -139,12 +144,27 @@ def build(
     # and upstream's iOS PY_STDLIB_MOD_SET_NA (3.14+); a no-op if the string isn't
     # present.
     configure = src / "configure"
-    configure.write_text(
+    configure_text = (
         configure.read_text()
         .replace(
             "py_cv_module__multiprocessing=n/a", "py_cv_module__multiprocessing=yes"
         )
         .replace("py_cv_module__posixshmem=n/a", "py_cv_module__posixshmem=yes")
+    )
+
+    # Raise the iOS deployment target. The Apple tool configures an unversioned
+    # --host=arm64-apple-ios, so configure falls back to its hardcoded 13.0 default
+    # (and overwrites IPHONEOS_DEPLOYMENT_TARGET from the environment), then derives
+    # -mios[-simulator]-version-min, the framework's MinimumOSVersion and the
+    # sysconfig platform tag from it. The same line exists in 3.14+ upstream, 3.13
+    # upstream and the 3.12 back-port patch; fail loudly if upstream ever changes it.
+    default_target = "IPHONEOS_DEPLOYMENT_TARGET:=13.0}"
+    if configure_text.count(default_target) != 1:
+        raise SystemExit(f"Expected exactly one {default_target!r} in {configure}")
+    configure.write_text(
+        configure_text.replace(
+            default_target, f"IPHONEOS_DEPLOYMENT_TARGET:={IOS_DEPLOYMENT_TARGET}}}"
+        )
     )
 
     # iOS's SDK declares pipe2/dup3 in headers but doesn't provide them, and on recent
@@ -182,8 +202,8 @@ def _strip(paths: list) -> None:
 
 def _embed_ios_version_in_host_triple(sysconfig_path: Path) -> None:
     """Rewrite HOST_GNU_TYPE in a _sysconfigdata file to embed IPHONEOS_DEPLOYMENT_TARGET
-    (e.g. ``aarch64-apple-ios`` -> ``aarch64-apple-ios13.0``,
-    ``...-ios-simulator`` -> ``...-ios13.0-simulator``)."""
+    (e.g. ``aarch64-apple-ios`` -> ``aarch64-apple-ios15.0``,
+    ``...-ios-simulator`` -> ``...-ios15.0-simulator``)."""
     text = sysconfig_path.read_text()
     m = re.search(r"'IPHONEOS_DEPLOYMENT_TARGET':\s*'([^']+)'", text)
     if not m:
@@ -235,10 +255,23 @@ def reshape(version: str, short: str, src: Path, root: Path) -> None:
     # the _sysconfigdata lacks the iOS deployment version. mobile-forge's crossenv recovers
     # the iOS release by splitting HOST_GNU_TYPE (when _PYTHON_HOST_PLATFORM isn't set), so a
     # version-less triple yields an empty release and pip's iOS-tag code crashes. Embed the
-    # version (e.g. aarch64-apple-ios -> aarch64-apple-ios13.0), matching beeware. Fixing the
+    # version (e.g. aarch64-apple-ios -> aarch64-apple-ios15.0), matching beeware. Fixing the
     # xcframework copies here means the dart-install + platform-config copies inherit it.
     for sc in dst_xcf.glob(f"*/lib-*/{pyver}/_sysconfigdata__ios_*.py"):
         _embed_ios_version_in_host_triple(sc)
+
+    # The Apple tool also ships its testbed's dylib Info.plist template inside the
+    # xcframework (build/iOS-dylib-Info-template.plist), with MinimumOSVersion
+    # hardcoded to 13.0. Keep it consistent with the slices.
+    dylib_plist_template = dst_xcf / "build" / "iOS-dylib-Info-template.plist"
+    if dylib_plist_template.is_file():
+        dylib_plist_template.write_text(
+            re.sub(
+                r"(<key>MinimumOSVersion</key>\s*<string>)[^<]*(</string>)",
+                rf"\g<1>{IOS_DEPLOYMENT_TARGET}\g<2>",
+                dylib_plist_template.read_text(),
+            )
+        )
 
     shared_stdlib = dst_xcf / "lib" / pyver
     if not (shared_stdlib / "os.py").exists():
@@ -277,7 +310,11 @@ def reshape(version: str, short: str, src: Path, root: Path) -> None:
 
     support = root / "support" / short / "iOS"
     support.mkdir(parents=True, exist_ok=True)
-    lines = [f"Python version: {version}", "Build: custom", "Min iOS version: 13.0"]
+    lines = [
+        f"Python version: {version}",
+        "Build: custom",
+        f"Min iOS version: {IOS_DEPLOYMENT_TARGET}",
+    ]
     if deps:
         lines.append("---------------------")
         lines += [f"{name}: {ver}" for name, ver in sorted(deps.items())]
