@@ -37,7 +37,7 @@ DEFAULT_OPENSSL_VERSION = "3.6.2"
 DEFAULT_XZ_VERSION = "5.8.3"
 # zstd backs the _zstd module added in CPython 3.14 (PEP 784); built only for 3.14+.
 DEFAULT_ZSTD_VERSION = "1.5.7"
-DEFAULT_DEPLOYMENT_TARGET = "11.0"
+DEFAULT_DEPLOYMENT_TARGET = "12.0"
 ARCHES = ("x86_64", "arm64")
 
 # A minimal PATH keeps Homebrew / user Python installs from leaking into the build.

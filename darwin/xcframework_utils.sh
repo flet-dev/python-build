@@ -93,7 +93,7 @@ create_plist() {
 	<key>DTXcodeBuild</key>
 	<string>$xcode_build</string>
 	<key>MinimumOSVersion</key>
-	<string>13.0</string>
+	<string>15.0</string>
 	<key>UIDeviceFamily</key>
 	<array>
 		<integer>1</integer>
