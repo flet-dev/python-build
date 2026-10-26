@@ -26,7 +26,7 @@ permissions:
 jobs:
   setup:
     name: Read build matrix from manifest
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       versions: ${{ steps.read.outputs.versions }}
     steps:
@@ -167,7 +167,7 @@ jobs:
 
   publish-release:
     name: Publish Release Assets
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Date-keyed releases (PBS-style): only publish when an operator explicitly
     # triggers via workflow_dispatch with a `release_date` input, and only from
     # the protected main branch — the same condition that gates real signing, so
@@ -247,6 +247,6 @@ jobs:
           name: ${{ inputs.release_date }}
           files: release-artifacts/*
           fail_on_unmatched_files: true
-          generate_release_notes: false
+          generate_release_notes: true
           draft: false
           prerelease: false
