@@ -6499,10 +6499,10 @@ diff --git a/Lib/test/support/__init__.py b/Lib/test/support/__init__.py
 index 4605938b875..cc65b3d63dc 100644
 --- a/Lib/test/support/__init__.py
 +++ b/Lib/test/support/__init__.py
-@@ -64,6 +64,7 @@
-     "force_not_colorized_test_class",
+@@ -65,6 +65,7 @@
      "make_clean_env",
      "BrokenIter",
+     "requires_root_user", "requires_non_root_user",
 +    "reset_code", "on_github_actions"
      ]
  
