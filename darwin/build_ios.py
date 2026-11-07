@@ -5,6 +5,8 @@ Every supported version is built with the **same** mechanism — CPython's in-tr
 ``Apple`` build package (``python Apple build iOS``):
 
 * **3.14+** — the ``Apple/`` tooling is native; build straight from the source tarball.
+  3.15 moved it to ``Platforms/Apple/`` (``python Platforms/Apple build iOS``); same
+  subcommands and the same ``cross-build/`` output.
 * **3.13 / 3.12** — the tooling (and, for 3.12, the PEP 730 iOS runtime) isn't upstream yet,
   so we first apply a vendored back-port patch (``ios_patches/<short>/Python.patch``) that
   adds it, then run the identical ``python Apple build iOS``. No dependency on beeware's
@@ -188,7 +190,8 @@ def build(
     # own C deps, and emits cross-build/iOS/Python.xcframework. `build` does not run the
     # (device/simulator) testbed.
     host_python = shutil.which("python3") or sys.executable
-    run([host_python, "Apple", "build", "iOS"], cwd=src, env=env)
+    apple_tool = "Platforms/Apple" if minor >= 15 else "Apple"
+    run([host_python, apple_tool, "build", "iOS"], cwd=src, env=env)
 
     reshape(version, short, src, root)
 

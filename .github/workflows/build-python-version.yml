@@ -17,6 +17,7 @@ on:
           - 3.12.16
           - 3.13.18
           - 3.14.10
+          - 3.15.2
 
 env:
   PYTHON_VERSION: ${{ inputs.python_version || github.event.inputs.python_version }}
@@ -54,8 +55,9 @@ jobs:
         run: |
           mkdir -p dist
 
-          # iOS: 3.14+ uses CPython's in-tree Apple tooling, 3.13 builds from source per
-          # iOS/README.rst, 3.12 uses beeware. Emits normalized ./install + ./support.
+          # iOS: every minor runs CPython's in-tree Apple tooling (3.14 `Apple/`, 3.15+
+          # `Platforms/Apple/`; 3.12/3.13 back-port it via ios_patches/). Emits normalized
+          # ./install + ./support.
           python build_ios.py "$PYTHON_VERSION"
 
           # build_ios.py mutates the CPython-created Python.xcframework after assembly
@@ -127,7 +129,7 @@ jobs:
           tar -czf dist/python-android-mobile-forge-$PYTHON_VERSION.tar.gz install support
           # ABIs come from the manifest (`pythons.<short>.android_abis`) so a
           # future minor only needs a one-line edit there — not a workflow
-          # bump. 3.12 ships armeabi-v7a; 3.13+ are 64-bit only (PEP 738).
+          # bump.
           short="$PYTHON_VERSION_SHORT"
           abis=$(jq -r --arg s "$short" '.pythons[$s].android_abis[]' "$GITHUB_WORKSPACE/manifest.json")
           if [ -z "$abis" ]; then

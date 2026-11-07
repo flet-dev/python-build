@@ -4,7 +4,8 @@ Scripts and CI jobs for building Python for Android.
 
 * Can be run on both Linux and macOS.
 * Python 3.12 uses the legacy patched cross-build flow.
-* Python 3.13+ uses CPython's official `Android/android.py` build flow.
+* Python 3.13+ uses CPython's official Android build flow (`Android/android.py`;
+  3.15 moved it to `Platforms/Android`, run as `python3 Platforms/Android`).
 * Creates Python installation with a structure suitable for https://github.com/flet-dev/mobile-forge.
 
 ## Usage

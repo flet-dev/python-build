@@ -5,7 +5,8 @@ This replaces beeware's Make-based macOS path (which re-bundled python.org's off
 ``.pkg``) for *all* versions (3.12 / 3.13 / 3.14). Building from source means we get the
 exact micro version even when python.org never published a macOS installer for it.
 
-macOS provides bz2/lzma/sqlite/libffi via the SDK and CPython bundles libmpdec, so the
+macOS provides bz2/lzma/sqlite/libffi via the SDK and CPython bundles libmpdec (selected
+explicitly with ``--with-system-libmpdec=no``, since 3.15 dropped the implicit fallback), so the
 only third-party dependency we must supply is **OpenSSL** — and since no prebuilt
 universal2 macOS OpenSSL exists (cpython-apple-source-deps only ships iOS-family slices,
 Homebrew is single-arch), we build it universal2 from source here.
@@ -352,6 +353,11 @@ def build_python_framework(
         # the _lzma extension builds (the SDK provides no lzma.h).
         f"LIBLZMA_CFLAGS=-I{xz_prefix}/include",
         f"LIBLZMA_LIBS=-L{xz_prefix}/lib -llzma",
+        # Build _decimal against CPython's bundled libmpdec. configure defaults to a
+        # system libmpdec (3.13+); 3.13/3.14 fell back to the bundled copy when none was
+        # found, 3.15 skips _decimal instead (and a runner's single-arch Homebrew
+        # mpdecimal must never be linked into the universal2 framework either).
+        "--with-system-libmpdec=no",
     ]
     if zstd_prefix is not None:
         # _zstd (CPython 3.14+) — SDK provides no zstd.h, so feed the from-source build.

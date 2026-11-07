@@ -38,9 +38,17 @@ Schema:
 `android_abis` lists the ABIs `package-for-dart.sh` builds for this minor —
 64-bit (`arm64-v8a`, `x86_64`) plus 32-bit `armeabi-v7a`. [PEP 738](https://peps.python.org/pep-0738/)
 makes 64-bit Android the *tested* Tier-3 configuration, but CPython's official
-`Android/android.py` still builds 32-bit ARM (it's in its supported `HOSTS`), so
-all three minors carry `armeabi-v7a`. Drop an ABI from a minor's list to stop
-building it.
+Android tooling (`Android/android.py`, `Platforms/Android` from 3.15) still builds
+32-bit ARM (it's in its supported `HOSTS`), so every minor carries `armeabi-v7a`.
+Drop an ABI from a minor's list to stop building it.
+
+`prerelease: true` marks a minor that downstream tools offer only on request:
+serious_python and flet never pick it as the default or for an open-ended
+`requires-python` that a stable minor also satisfies. It must be named with
+`--python-version X.Y` or `requires-python = "==X.Y.*"`. Use it while a minor's
+ecosystem is still catching up (e.g. 3.15: CPython is final, but Pyodide is still
+`315.0.0a2` and the mobile wheel index has no cp315 builds yet). This repo builds and
+publishes pre-release minors like any other.
 
 The committed file omits `release`; the publish step injects it.
 

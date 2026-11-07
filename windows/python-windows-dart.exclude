@@ -30,6 +30,9 @@ DLLs/xxlimited*.pyd
 DLLs/xxsubtype*.pyd
 DLLs/tcl86t.dll
 DLLs/tk86t.dll
+# Tcl/Tk 9 (3.15+) drops the `t` suffix, prefixes Tk with `tcl9` and adds libtommath.
+DLLs/tcl9*.dll
+DLLs/libtommath.dll
 DLLs/zlib1.dll
 DLLs/pyshellext.dll
 DLLs/pyshellext_d.dll

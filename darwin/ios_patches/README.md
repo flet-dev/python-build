@@ -9,7 +9,8 @@ the **same** standard mechanism for every version instead of bespoke build code.
 | `3.13/Python.patch` | `Apple/` build tooling + `iOS/Resources/bin` shims | iOS *runtime* (PEP 730) is already upstream in 3.13 |
 | `3.12/Python.patch` | `Apple/` build tooling **+ the PEP 730 runtime** (`_ios_support.py`, `getpath.c`, `pylifecycle.c`, …) | 3.12 has no iOS support at all upstream |
 
-3.14+ needs **no** patch — the `Apple/` tooling is native there.
+3.14+ needs **no** patch — the `Apple/` tooling is native there (3.15 moved it to
+`Platforms/Apple/`; `build_ios.py` picks the path by minor).
 
 ## Provenance
 

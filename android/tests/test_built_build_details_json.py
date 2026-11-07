@@ -16,7 +16,7 @@ and `libpython.dynamic_stableabi` points at a file that actually exists.
 
 3.13 and 3.12 don't emit a `build-details.json` (it's a 3.14 addition),
 so the relevant `@post_build` class is gated on `PYTHON_VERSION_SHORT`
-via `@requires_python("3.14")` and degrades to a skip on the older
+via `@requires_python("3.14", "3.15")` and degrades to a skip on the older
 matrix shards.
 """
 
@@ -77,11 +77,11 @@ def _resolve(data: dict, path: tuple[str, ...]):
 
 
 @post_build
-@requires_python("3.14")
+@requires_python("3.14", "3.15")
 class BuiltBuildDetailsJsonShape(unittest.TestCase):
     """The shipped `build-details.json` must carry re-anchored paths.
 
-    Gated on 3.14: CPython didn't ship this file pre-3.14, so on 3.12/3.13
+    Gated on 3.14+: CPython didn't ship this file pre-3.14, so on 3.12/3.13
     shards there's nothing to inspect and the class skips wholesale.
     """
 

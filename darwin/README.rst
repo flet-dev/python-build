@@ -21,7 +21,8 @@ iOS — ``build_ios.py <full-version>``
 Every version is built with the **same** mechanism — CPython's in-tree ``Apple`` build
 tool (``python Apple build iOS``) — then ``cross-build/`` is reshaped into the layout above:
 
-* **3.14+** — the ``Apple/`` tooling is native; build straight from the source tarball.
+* **3.14+** — the ``Apple/`` tooling is native; build straight from the source tarball
+  (3.15 moved it to ``Platforms/Apple/``, run as ``python Platforms/Apple build iOS``).
 * **3.13 / 3.12** — the tooling (and, for 3.12, the PEP 730 iOS runtime) isn't upstream
   yet, so a vendored back-port patch (``ios_patches/<short>/Python.patch``, see that
   directory's README) is applied first to add it. No dependency on beeware's

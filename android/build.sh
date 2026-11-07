@@ -177,12 +177,27 @@ else
         fi
     fi
 
+    # CPython 3.15 moved its Android tooling from Android/android.py to the
+    # Platforms/Android package (run as `python3 Platforms/Android <cmd>`);
+    # the subcommands and the cross-build/<HOST>/prefix output are unchanged.
+    if [ $version_int -ge 315 ]; then
+        cpython_android_dir=Platforms/Android
+        cpython_android_tool=(python3 Platforms/Android)
+    else
+        cpython_android_dir=Android
+        cpython_android_tool=(Android/android.py)
+    fi
+
     # Reuse already-installed NDK by exposing it at the location expected by
-    # CPython's Android/android-env.sh.
+    # CPython's android-env.sh.
     if [ -z "${NDK_HOME:-}" ] && [ -d "$HOME/ndk/r27d" ]; then
         export NDK_HOME="$HOME/ndk/r27d"
     fi
-    cpython_ndk_version=$(sed -n 's/^ndk_version=//p' Android/android-env.sh | head -n1)
+    cpython_ndk_version=$(sed -n 's/^ndk_version=//p' "$cpython_android_dir/android-env.sh" | head -n1)
+    if [ -z "$cpython_ndk_version" ]; then
+        echo "Could not read ndk_version from $cpython_android_dir/android-env.sh"
+        exit 1
+    fi
     if [ -n "${NDK_HOME:-}" ] && [ -d "$NDK_HOME" ] && [ -n "${cpython_ndk_version:-}" ]; then
         mkdir -p "$ANDROID_HOME/ndk"
         if [ ! -e "$ANDROID_HOME/ndk/$cpython_ndk_version" ]; then
@@ -190,10 +205,18 @@ else
         fi
     fi
 
-    Android/android.py configure-build
-    Android/android.py make-build
-    Android/android.py configure-host "$HOST"
-    Android/android.py make-host "$HOST"
+    "${cpython_android_tool[@]}" configure-build
+    "${cpython_android_tool[@]}" make-build
+    # configure defaults to a system libmpdec, which the Android sysroot doesn't
+    # have. 3.13/3.14 fell back to CPython's bundled copy; 3.15 dropped that
+    # fallback and builds no _decimal at all (python.org's own 3.15 Android
+    # release lacks it), so ask for the bundled copy explicitly.
+    configure_host_args=()
+    if [ $version_int -ge 315 ]; then
+        configure_host_args+=(-- --with-system-libmpdec=no)
+    fi
+    "${cpython_android_tool[@]}" configure-host "$HOST" ${configure_host_args[@]+"${configure_host_args[@]}"}
+    "${cpython_android_tool[@]}" make-host "$HOST"
     cp -a "cross-build/$HOST/prefix/"* "$PREFIX"
 
     # CPython's official Android tooling builds OpenSSL/bzip2/libffi/xz/sqlite
