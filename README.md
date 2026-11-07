@@ -42,10 +42,11 @@ Android tooling (`Android/android.py`, `Platforms/Android` from 3.15) still buil
 32-bit ARM (it's in its supported `HOSTS`), so every minor carries `armeabi-v7a`.
 Drop an ABI from a minor's list to stop building it.
 
-`prerelease: true` marks a minor that downstream tools offer only on request:
-serious_python and flet never pick it as the default or for an open-ended
-`requires-python` that a stable minor also satisfies. It must be named with
-`--python-version X.Y` or `requires-python = "==X.Y.*"`. Use it while a minor's
+`prerelease: true` marks a minor that downstream tools offer only on request.
+serious_python never defaults to it, and flet never picks it as the default or
+for an open-ended `requires-python` that a stable minor also satisfies. It must
+be named with `--python-version X.Y` (or `SERIOUS_PYTHON_VERSION`), or with a
+`requires-python` that only it satisfies, such as `">=X.Y"` or `"==X.Y.*"`. Use it while a minor's
 ecosystem is still catching up (e.g. 3.15: CPython is final, but Pyodide is still
 `315.0.0a2` and the mobile wheel index has no cp315 builds yet). This repo builds and
 publishes pre-release minors like any other.
